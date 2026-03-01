@@ -1846,8 +1846,12 @@
 
         async function fetchExamInfo(fagkode) {
             const url = `https://kandidat.udir.no/eksamensinfo/${fagkode}`;
+            const corsProxy = `https://api.allorigins.win/raw?url=`;
             try {
-                const response = await fetch(url);
+                const response = await fetch(corsProxy + encodeURIComponent(url));
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
                 const html = await response.text();
                 
                 // Parse the HTML to extract exam timing and hjelpemidler
