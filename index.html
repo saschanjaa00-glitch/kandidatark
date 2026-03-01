@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Student Exam Cards Generator</title>
+    <title>Generator for eksamensskjema</title>
     <style>
         * {
             margin: 0;
@@ -89,10 +89,17 @@
             margin-bottom: 20px;
             display: none;
             border: 1px solid #e0e0e0;
+            position: relative;
         }
 
         .file-info.visible {
-            display: block;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+
+        .file-info-content {
+            flex: 1;
         }
 
         .file-name {
@@ -107,6 +114,23 @@
             font-size: 13px;
         }
 
+        .remove-file-btn {
+            background: #c97979;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 13px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: background 0.2s;
+            white-space: nowrap;
+        }
+
+        .remove-file-btn:hover {
+            background: #b35555;
+        }
+
         .btn {
             background: #333;
             color: white;
@@ -118,7 +142,6 @@
             cursor: pointer;
             width: 100%;
             transition: background 0.2s;
-            display: none;
         }
 
         .btn.visible {
@@ -136,6 +159,14 @@
         .btn:disabled {
             opacity: 0.5;
             cursor: not-allowed;
+        }
+
+        .btn-kandidatark {
+            background: #555;
+        }
+
+        .btn-kandidatark:hover {
+            background: #666;
         }
 
         .btn-group {
@@ -336,79 +367,131 @@
             color: #333;
         }
 
-        .date-checkbox {
-            display: flex;
-            align-items: center;
-            padding: 8px 0;
-            border-bottom: 1px solid #f0f0f0;
+        #datesList {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 10px;
+            grid-auto-rows: auto;
         }
 
-        .date-checkbox:last-child {
-            border-bottom: none;
+        .date-checkbox {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 12px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            text-align: center;
+            transition: background 0.2s;
+        }
+
+        .date-checkbox:hover {
+            background: #f9f9f9;
         }
 
         .date-checkbox input[type="checkbox"] {
             width: 16px;
             height: 16px;
-            margin-right: 10px;
+            margin-bottom: 8px;
             cursor: pointer;
         }
 
         .date-checkbox label {
             cursor: pointer;
-            flex: 1;
             color: #222;
-            font-size: 14px;
+            font-size: 13px;
+            font-weight: 500;
+        }
+
+        .date-weekday {
+            color: #888;
+            font-size: 11px;
+            margin-top: 4px;
+        }
+
+        #printRoomContainer {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            border: 1px solid #e0e0e0;
+        }
+
+        #printRoomContainer h3 {
+            color: #222;
+            margin-bottom: 12px;
+            font-size: 15px;
+            font-weight: 600;
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>Student Exam Cards</h1>
-        <p class="subtitle">Generate individual A4 cards from Excel file</p>
+        <h1>Kandidatark og kandidatlister</h1>
+        <p class="subtitle">Hjelpeverktøy for eksamensgjennomføring</p>
 
         <div class="upload-area" id="uploadArea">
             <div class="upload-icon">�</div>
-            <div class="upload-text">Click to select or drag Excel file here</div>
-            <div class="upload-hint">Supports .xlsx and .xls files</div>
+            <div class="upload-text">Klikk for å velge eller dra Excel-fil hit</div>
+            <div class="upload-hint">Støtter .xlsx og .xls filer</div>
         </div>
 
         <input type="file" id="fileInput" accept=".xlsx,.xls">
 
         <div class="file-info" id="fileInfo">
-            <div class="file-name" id="fileName"></div>
-            <div class="file-stats" id="fileStats"></div>
+            <div class="file-info-content">
+                <div class="file-name" id="fileName"></div>
+                <div class="file-stats" id="fileStats"></div>
+            </div>
+            <button class="remove-file-btn" id="removeFileBtn">Fjern fil</button>
         </div>
 
         <div id="datesContainer" style="display: none; margin-bottom: 20px;">
-            <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Select Exam Dates:</h3>
-            <div id="datesList" style="background: #f9f9f9; padding: 12px 15px; border-radius: 6px; border: 1px solid #e0e0e0;"></div>
+            <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Velg eksamensdatoer:</h3>
+            <div id="datesList" style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0;"></div>
         </div>
 
         <div style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
-            <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Sort and Display:</h3>
-            <div style="display: flex; flex-direction: column; gap: 10px;">
-                <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 14px;">
-                    <input type="radio" name="sortBy" value="fornavn" id="sortFornavn" checked style="margin-right: 8px; width: 16px; height: 16px;">
-                    Sort by First Name (Display: Fornavn Etternavn)
-                </label>
-                <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 14px;">
-                    <input type="radio" name="sortBy" value="etternavn" id="sortEtternavn" style="margin-right: 8px; width: 16px; height: 16px;">
-                    Sort by Last Name (Display: Etternavn, Fornavn)
-                </label>
+            <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Kandidatark</h3>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <p style="color: #555; font-size: 13px; margin-bottom: 10px; font-weight: 500;">Sortering og visning:</p>
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 14px;">
+                            <input type="radio" name="sortBy" value="fornavn" id="sortFornavn" checked style="margin-right: 8px; width: 16px; height: 16px;">
+                            Sorter etter fornavn (Visning: Fornavn Etternavn)
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 14px;">
+                            <input type="radio" name="sortBy" value="etternavn" id="sortEtternavn" style="margin-right: 8px; width: 16px; height: 16px;">
+                            Sorter etter etternavn (Visning: Etternavn, Fornavn)
+                        </label>
+                    </div>
+                </div>
+                <button class="btn btn-kandidatark" id="generateBtn" disabled>Generer kandidatark</button>
             </div>
         </div>
 
-        <button class="btn" id="generateBtn">Generate Word Document</button>
-
-        <button class="btn" id="generateTablesBtn">Generate Room Tables</button>
+        <div id="printRoomContainer" style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
+            <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Kandidatlister</h3>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <label for="copiesPerRoom" style="color: #222; font-size: 14px; font-weight: 500;">Kopier per rom:</label>
+                    <input id="copiesPerRoom" type="number" min="1" value="1" style="width: 80px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                </div>
+                <div class="btn-group">
+                    <button class="btn btn-kandidatark" id="generateTablesBtn" disabled>Generer kandidatlister per rom</button>
+                    <button class="btn btn-kandidatark" id="generateTilretteTablesBtn" disabled>Generer liste over tilrettelegginger</button>
+                </div>
+            </div>
+        </div>
 
         <div class="spinner" id="spinner"></div>
         <div class="status" id="status"></div>
 
         <div class="required-columns">
-            <h3>Required Excel Columns:</h3>
-            <ul>
+            <h3>Excel-kolonner:</h3>
+            <p style="color: #555; font-size: 13px; margin-bottom: 10px; font-weight: 500;">Obligatoriske:</p>
+            <ul style="margin-bottom: 15px;">
                 <li>Rom</li>
                 <li>Fagkode</li>
                 <li>Fagnavn</li>
@@ -416,6 +499,11 @@
                 <li>Etternavn</li>
                 <li>Eksamensdato</li>
                 <li>PAS kandidatnummer</li>
+            </ul>
+            <p style="color: #555; font-size: 13px; margin-bottom: 10px; font-weight: 500;">Valgfrie:</p>
+            <ul>
+                <li>Telefon (brukes i romtabeller)</li>
+                <li>eksamenstilrettelegginger (brukes i tilretteleggingstabeller)</li>
             </ul>
         </div>
     </div>
@@ -449,6 +537,26 @@
         const datesList = document.getElementById('datesList');
         const sortFornavnRadio = document.getElementById('sortFornavn');
         const sortEtternavnRadio = document.getElementById('sortEtternavn');
+        const copiesPerRoomInput = document.getElementById('copiesPerRoom');
+        const generateTablesBtn = document.getElementById('generateTablesBtn');
+        const generateTilretteTablesBtn = document.getElementById('generateTilretteTablesBtn');
+        const removeFileBtn = document.getElementById('removeFileBtn');
+
+        // Remove file functionality
+        removeFileBtn.addEventListener('click', () => {
+            currentData = null;
+            selectedDates = new Set();
+            fileInfo.classList.remove('visible');
+            fileName.textContent = '';
+            fileStats.textContent = '';
+            datesContainer.style.display = 'none';
+            datesList.innerHTML = '';
+            generateBtn.disabled = true;
+            generateTablesBtn.disabled = true;
+            generateTilretteTablesBtn.disabled = true;
+            fileInput.value = '';
+            status.className = 'status';
+        });
 
         // Track sort preference changes
         sortFornavnRadio.addEventListener('change', () => {
@@ -486,11 +594,12 @@
 
         // Generate button
         generateBtn.addEventListener('click', generateDocument);
-        document.getElementById('generateTablesBtn').addEventListener('click', generateRoomTables);
+        generateTablesBtn.addEventListener('click', generateRoomTables);
+        generateTilretteTablesBtn.addEventListener('click', generateTilretteTables);
 
         function handleFile(file) {
             if (!file.name.match(/\.(xlsx|xls)$/)) {
-                showStatus('Please select an Excel file (.xlsx or .xls)', 'error');
+                showStatus('Vennligst velg en Excel-fil (.xlsx eller .xls)', 'error');
                 return;
             }
 
@@ -503,7 +612,7 @@
                     const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
                     if (jsonData.length === 0) {
-                        showStatus('Excel file is empty', 'error');
+                        showStatus('Excel-filen er tom', 'error');
                         return;
                     }
 
@@ -517,24 +626,39 @@
                     const missingColumns = requiredColumns.filter(col => !(col in firstRow));
 
                     if (missingColumns.length > 0) {
-                        showStatus(`Missing columns: ${missingColumns.join(', ')}`, 'error');
+                        showStatus(`Manglende kolonner: ${missingColumns.join(', ')}`, 'error');
                         return;
                     }
 
-                    currentData = jsonData;
+                    // Filter by Form column if it exists (only keep "Skriftlig")
+                    let filteredData = jsonData;
+                    if ('Form' in firstRow) {
+                        filteredData = jsonData.filter(student => {
+                            const form = String(student['Form']).trim();
+                            return form === 'Skriftlig';
+                        });
+                        
+                        if (filteredData.length === 0) {
+                            showStatus('Ingen studenter med "Skriftlig" eksamen funnet', 'error');
+                            return;
+                        }
+                    }
+
+                    currentData = filteredData;
                     fileName.textContent = file.name;
-                    fileStats.textContent = `${jsonData.length} students found`;
+                    fileStats.textContent = `${filteredData.length} studenter funnet`;
                     fileInfo.classList.add('visible');
                     
                     // Extract and display unique dates
-                    displayDateOptions(jsonData);
+                    displayDateOptions(filteredData);
                     
-                    generateBtn.classList.add('visible');
-                    document.getElementById('generateTablesBtn').classList.add('visible');
-                    showStatus('File loaded successfully', 'success');
+                    generateBtn.disabled = false;
+                    generateTablesBtn.disabled = false;
+                    generateTilretteTablesBtn.disabled = false;
+                    showStatus('Fil lastet inn', 'success');
 
                 } catch (error) {
-                    showStatus('Error reading Excel file: ' + error.message, 'error');
+                    showStatus('Feil ved lesing av Excel-fil: ' + error.message, 'error');
                 }
             };
 
@@ -566,36 +690,150 @@
                 if (date) datesSet.add(date);
             });
 
-            const uniqueDates = Array.from(datesSet).sort();
+            const uniqueDates = Array.from(datesSet).sort((a, b) => {
+                const parseDate = (dateStr) => {
+                    const parts = dateStr.split('.');
+                    return new Date(parts[2], parts[1] - 1, parts[0]);
+                };
+                return parseDate(a) - parseDate(b);
+            });
             selectedDates = new Set(uniqueDates); // Default: all selected
 
             // Clear and populate the dates list
             datesList.innerHTML = '';
-            uniqueDates.forEach(date => {
-                const checkboxDiv = document.createElement('div');
-                checkboxDiv.className = 'date-checkbox';
-                
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.id = `date-${date}`;
-                checkbox.value = date;
-                checkbox.checked = true;
-                checkbox.addEventListener('change', (e) => {
-                    if (e.target.checked) {
-                        selectedDates.add(date);
-                    } else {
-                        selectedDates.delete(date);
-                    }
-                });
-
-                const label = document.createElement('label');
-                label.htmlFor = `date-${date}`;
-                label.textContent = date;
-
-                checkboxDiv.appendChild(checkbox);
-                checkboxDiv.appendChild(label);
-                datesList.appendChild(checkboxDiv);
+            
+            // Add day of week headers (Mon-Fri only)
+            const dayHeaders = ['Man', 'Tir', 'Ons', 'Tor', 'Fre'];
+            dayHeaders.forEach(day => {
+                const header = document.createElement('div');
+                header.style.fontWeight = 'bold';
+                header.style.textAlign = 'center';
+                header.style.fontSize = '12px';
+                header.style.color = '#666';
+                header.style.padding = '8px';
+                header.style.borderBottom = '2px solid #ddd';
+                header.textContent = day;
+                datesList.appendChild(header);
             });
+            
+            // Helper function to parse DD.MM.YYYY and get day of week
+            function getDateInfo(dateStr) {
+                const parts = dateStr.split('.');
+                const date = new Date(parts[2], parts[1] - 1, parts[0]);
+                const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, ..., 6 = Saturday
+                const weekdayNames = ['Søn', 'Man', 'Tir', 'Ons', 'Tor', 'Fre', 'Lør'];
+                return { date, dayOfWeek, weekdayName: weekdayNames[dayOfWeek] };
+            }
+
+            // Helper function to get ISO week number
+            function getWeekNumber(date) {
+                const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+                const dayNum = d.getUTCDay() || 7;
+                d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+                const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+                return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+            }
+            
+            // Helper to format Date object to DD.MM.YYYY
+            function formatDateFromObj(dateObj) {
+                const day = String(dateObj.getDate()).padStart(2, '0');
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const year = dateObj.getFullYear();
+                return `${day}.${month}.${year}`;
+            }
+            
+            // Create set of dates with exams for quick lookup
+            const datesWithExams = new Set(uniqueDates);
+            
+            // Find min and max dates
+            if (uniqueDates.length === 0) {
+                datesContainer.style.display = 'block';
+                return;
+            }
+            
+            const minDate = getDateInfo(uniqueDates[0]).date;
+            const maxDate = getDateInfo(uniqueDates[uniqueDates.length - 1]).date;
+            
+            // Generate all dates from min to max
+            let currentDate = new Date(minDate);
+            let lastWeekNumber = -1;
+            let currentGridRow = 2;
+            
+            while (currentDate <= maxDate) {
+                const dayOfWeek = currentDate.getDay(); // 0=Sun, 1=Mon, ..., 5=Fri, 6=Sat
+                
+                // Only process weekdays (Mon-Fri = 1-5)
+                if (dayOfWeek >= 1 && dayOfWeek <= 5) {
+                    const dateStr = formatDateFromObj(currentDate);
+                    const weekNum = getWeekNumber(currentDate);
+                    
+                    // If week changed, increment grid row
+                    if (weekNum !== lastWeekNumber && lastWeekNumber !== -1) {
+                        currentGridRow++;
+                    }
+                    
+                    const cell = document.createElement('div');
+                    cell.style.gridRow = currentGridRow;
+                    cell.style.gridColumn = dayOfWeek;
+                    
+                    if (datesWithExams.has(dateStr)) {
+                        // Has exam - make entire box clickable
+                        cell.className = 'date-checkbox';
+                        cell.style.cursor = 'pointer';
+                        cell.style.background = '#c8e6c9'; // Light green for selected
+                        
+                        const checkbox = document.createElement('input');
+                        checkbox.type = 'checkbox';
+                        checkbox.id = `date-${dateStr}`;
+                        checkbox.value = dateStr;
+                        checkbox.checked = true;
+                        checkbox.style.display = 'none'; // Hide checkbox, use box as click target
+                        checkbox.addEventListener('change', (e) => {
+                            if (e.target.checked) {
+                                selectedDates.add(dateStr);
+                                cell.style.background = '#c8e6c9';
+                            } else {
+                                selectedDates.delete(dateStr);
+                                cell.style.background = '#f0f0f0';
+                            }
+                        });
+
+                        const label = document.createElement('label');
+                        label.htmlFor = `date-${dateStr}`;
+                        label.textContent = dateStr;
+                        label.style.cursor = 'pointer';
+
+                        cell.appendChild(checkbox);
+                        cell.appendChild(label);
+                        
+                        // Make entire cell clickable
+                        cell.addEventListener('click', () => {
+                            checkbox.checked = !checkbox.checked;
+                            checkbox.dispatchEvent(new Event('change'));
+                        });
+                    } else {
+                        // No exam - show greyed out box
+                        cell.className = 'date-checkbox';
+                        cell.style.background = '#eeeeee';
+                        cell.style.opacity = '0.6';
+                        cell.style.cursor = 'default';
+                        
+                        const noExamText = document.createElement('div');
+                        noExamText.style.fontSize = '12px';
+                        noExamText.style.color = '#999';
+                        noExamText.style.fontStyle = 'italic';
+                        noExamText.textContent = 'Ingen eksamen';
+                        
+                        cell.appendChild(noExamText);
+                    }
+                    
+                    datesList.appendChild(cell);
+                    lastWeekNumber = weekNum;
+                }
+                
+                // Move to next day
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
 
             datesContainer.style.display = 'block';
         }
@@ -611,7 +849,74 @@
             }
         }
 
+        function cleanPhoneNumber(phone) {
+            if (!phone) return '';
+            const phoneStr = String(phone).trim();
+            // Remove +47 if phone starts with it
+            if (phoneStr.startsWith('+47')) {
+                return phoneStr.substring(3);
+            }
+            return phoneStr;
+        }
+
+        function shortenSubject(fagkode, fagnavn) {
+            const subject = `${fagkode} - ${fagnavn}`;
+            if (subject.length > 28) {
+                return subject.substring(0, 25) + '...';
+            }
+            return subject;
+        }
+
         async function generateRoomTables() {
+            return generateRoomTablesWithFilter(false);
+        }
+
+        async function generateTilretteTables() {
+            return generateRoomTablesWithFilter(true);
+        }
+
+        function getTilretteleggingValue(student) {
+            return student['Eksamensstilrettelegginger']
+                ?? student['Eksamenstilrettelegginger']
+                ?? student['eksamenstilrettelegginger']
+                ?? student['Eksamenstilrettelegging']
+                ?? student['eksamenstilrettelegging']
+                ?? '';
+        }
+
+        function cleanTilretteleggingText(value) {
+            return String(value || '')
+                .replace(/Dok\.\s*Elements\s*\d{4}\/\d+/gi, '')
+                .replace(/\s{2,}/g, ' ')
+                .trim();
+        }
+
+        function getTilretteleggingFlags(student) {
+            const cleaned = cleanTilretteleggingText(getTilretteleggingValue(student));
+            const lower = cleaned.toLowerCase();
+
+            let remaining = lower
+                .replace(/utvidet tid ved skriftlig eksamen/gi, '')
+                .replace(/skjermet eksamensplass:\s*vi gjør oppmerksom på at skjermet eksamensplass ikke betyr eget rom, men at du for eksempel får sitte bak skillevegger/gi, '')
+                .replace(/skjermet eksamensplass/gi, '')
+                .replace(/annet:\s*bruk av lingdys på deler av skriftlig eksamen som tillater bruk av pc\/mac/gi, '')
+                .replace(/bruk av lingdys på deler av skriftlig eksamen som tillater bruk av pc\/mac/gi, '')
+                .replace(/lingdys/gi, '')
+                .replace(/annet:/gi, '')
+                .replace(/[.,;:\-–_/()]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
+            return {
+                cleaned,
+                utvidetTid: lower.includes('utvidet tid ved skriftlig eksamen'),
+                skjermetPlass: lower.includes('skjermet eksamensplass'),
+                lingdys: lower.includes('lingdys'),
+                annet: remaining.length > 0
+            };
+        }
+
+        async function generateRoomTablesWithFilter(onlyTilrettelegging) {
             if (!currentData) return;
 
             if (selectedDates.size === 0) {
@@ -619,19 +924,57 @@
                 return;
             }
 
+            if (onlyTilrettelegging) {
+                const hasTilretteColumn = currentData.length > 0 && currentData.some(student => {
+                    return Object.prototype.hasOwnProperty.call(student, 'Eksamensstilrettelegginger')
+                        || Object.prototype.hasOwnProperty.call(student, 'Eksamenstilrettelegginger')
+                        || Object.prototype.hasOwnProperty.call(student, 'eksamenstilrettelegginger')
+                        || Object.prototype.hasOwnProperty.call(student, 'Eksamenstilrettelegging')
+                        || Object.prototype.hasOwnProperty.call(student, 'eksamenstilrettelegging');
+                });
+
+                if (!hasTilretteColumn) {
+                    showStatus('Manglende kolonne: eksamenstilrettelegginger', 'error');
+                    return;
+                }
+            }
+
             generateBtn.disabled = true;
-            document.getElementById('generateTablesBtn').disabled = true;
+            generateTablesBtn.disabled = true;
+            generateTilretteTablesBtn.disabled = true;
             spinner.classList.add('visible');
-            showStatus('Generating room tables...', 'processing');
+            showStatus(
+                onlyTilrettelegging ? 'Genererer tilretteleggingstabeller...' : 'Genererer romtabeller...',
+                'processing'
+            );
 
             try {
-                const { Document, Paragraph, Table, TableCell, TableRow, TextRun, AlignmentType, VerticalAlign, PageBreak, convertInchesToTwip } = docx;
+                const { Document, Paragraph, Table, TableCell, TableRow, TextRun, AlignmentType, VerticalAlign, PageBreak, convertInchesToTwip, BorderStyle, Footer } = docx;
 
                 // Filter and group by room
                 const filteredData = currentData.filter(student => {
                     const date = formatDate(student['Eksamensdato']);
-                    return selectedDates.has(date);
+                    if (!selectedDates.has(date)) {
+                        return false;
+                    }
+
+                    if (!onlyTilrettelegging) {
+                        return true;
+                    }
+
+                    const tilrette = getTilretteleggingFlags(student);
+                    return tilrette.cleaned.length > 0;
                 });
+
+                if (filteredData.length === 0) {
+                    showStatus(
+                        onlyTilrettelegging
+                            ? 'Ingen studenter med eksamenstilrettelegginger funnet for valgte datoer'
+                            : 'Ingen studenter funnet for valgte datoer',
+                        'error'
+                    );
+                    return;
+                }
 
                 // Group by room
                 const roomGroups = {};
@@ -673,12 +1016,38 @@
                     return parseInt(a) - parseInt(b) || a.localeCompare(b);
                 });
 
+                const copiesPerRoom = Math.max(1, parseInt(copiesPerRoomInput.value, 10) || 1);
+                const roomsToRender = [];
+                sortedRooms.forEach(room => {
+                    for (let i = 0; i < copiesPerRoom; i++) {
+                        roomsToRender.push(room);
+                    }
+                });
+
                 const children = [];
 
                 // Generate table for each room
-                sortedRooms.forEach((room, roomIndex) => {
+                roomsToRender.forEach((room, roomIndex) => {
                     const students = roomGroups[room];
                     const roomDate = formatDate(students[0]['Eksamensdato']);
+
+                    // Check if any student in this room has skjermet plass
+                    const hasSkjermetPlass = onlyTilrettelegging && students.some(student => {
+                        const tilrette = getTilretteleggingFlags(student);
+                        return tilrette.skjermetPlass;
+                    });
+
+                    // Define thick border style for tilrettelegging tables
+                    const thickBorder = {
+                        style: BorderStyle.SINGLE,
+                        size: 20,
+                        color: '000000'
+                    };
+                    const thinBorder = {
+                        style: BorderStyle.SINGLE,
+                        size: 4,
+                        color: 'CCCCCC'
+                    };
 
                     // Add page break before each room (except first)
                     if (roomIndex > 0) {
@@ -693,7 +1062,8 @@
                             new TextRun({
                                 text: `${roomDate} - Rom ${room}`,
                                 bold: true,
-                                size: 24
+                                size: 30,
+                                font: 'Calibri'
                             })
                         ],
                         alignment: AlignmentType.CENTER,
@@ -706,33 +1076,160 @@
                         new TableRow({
                             children: [
                                 new TableCell({
-                                    children: [new Paragraph({ text: 'Navn', children: [new TextRun({ bold: true, size: 18 })] })],
-                                    verticalAlign: VerticalAlign.CENTER
+                                    children: [new Paragraph({
+                                        children: [new TextRun({
+                                            text: 'Navn',
+                                            bold: true,
+                                            size: 26,
+                                            font: 'Calibri'
+                                        })]
+                                    })],
+                                    verticalAlign: VerticalAlign.CENTER,
+                                    borders: onlyTilrettelegging ? {
+                                        top: thickBorder,
+                                        left: thickBorder,
+                                        right: thinBorder,
+                                        bottom: thickBorder
+                                    } : {}
                                 }),
                                 new TableCell({
-                                    children: [new Paragraph({ text: 'PAS Kandidatnummer', children: [new TextRun({ bold: true, size: 18 })] })],
-                                    verticalAlign: VerticalAlign.CENTER
+                                    children: [new Paragraph({
+                                        children: [new TextRun({
+                                            text: 'Kandidatnr.',
+                                            bold: true,
+                                            size: 26,
+                                            font: 'Calibri'
+                                        })]
+                                    })],
+                                    verticalAlign: VerticalAlign.CENTER,
+                                    width: { size: 15, type: 'percent' },
+                                    borders: onlyTilrettelegging ? {
+                                        top: thickBorder,
+                                        left: thinBorder,
+                                        right: thinBorder,
+                                        bottom: thickBorder
+                                    } : {}
                                 }),
                                 new TableCell({
-                                    children: [new Paragraph({ text: 'Fagkode - Fagnavn', children: [new TextRun({ bold: true, size: 18 })] })],
-                                    verticalAlign: VerticalAlign.CENTER
+                                    children: [new Paragraph({
+                                        children: [new TextRun({
+                                            text: 'Fagkode - Fagnavn',
+                                            bold: true,
+                                            size: 26,
+                                            font: 'Calibri'
+                                        })]
+                                    })],
+                                    verticalAlign: VerticalAlign.CENTER,
+                                    borders: onlyTilrettelegging ? {
+                                        top: thickBorder,
+                                        left: thinBorder,
+                                        right: thinBorder,
+                                        bottom: thickBorder
+                                    } : {}
                                 }),
-                                new TableCell({
-                                    children: [new Paragraph({ text: 'Telefon', children: [new TextRun({ bold: true, size: 18 })] })],
-                                    verticalAlign: VerticalAlign.CENTER
-                                }),
-                                new TableCell({
-                                    children: [new Paragraph({ text: 'Møtt', children: [new TextRun({ bold: true, size: 18 })] })],
-                                    verticalAlign: VerticalAlign.CENTER
-                                }),
-                                new TableCell({
-                                    children: [new Paragraph({ text: 'Tidspunkt levert', children: [new TextRun({ bold: true, size: 18 })] })],
-                                    verticalAlign: VerticalAlign.CENTER
-                                }),
-                                new TableCell({
-                                    children: [new Paragraph({ text: 'Hendelser', children: [new TextRun({ bold: true, size: 18 })] })],
-                                    verticalAlign: VerticalAlign.CENTER
-                                })
+                                ...(!onlyTilrettelegging ? [
+                                    new TableCell({
+                                        children: [new Paragraph({
+                                            children: [new TextRun({
+                                                text: 'Telefon',
+                                                bold: true,
+                                                size: 26,
+                                                font: 'Calibri'
+                                            })]
+                                        })],
+                                        verticalAlign: VerticalAlign.CENTER
+                                    })
+                                ] : []),
+                                ...(onlyTilrettelegging ? [
+                                    new TableCell({
+                                        children: [new Paragraph({
+                                            children: [new TextRun({
+                                                text: 'Utvidet tid',
+                                                bold: true,
+                                                size: 26,
+                                                font: 'Calibri'
+                                            })]
+                                        })],
+                                        verticalAlign: VerticalAlign.CENTER,
+                                        borders: {
+                                            top: thickBorder,
+                                            left: thinBorder,
+                                            right: thinBorder,
+                                            bottom: thickBorder
+                                        }
+                                    }),
+                                    ...(hasSkjermetPlass ? [
+                                        new TableCell({
+                                            children: [new Paragraph({
+                                                children: [new TextRun({
+                                                    text: 'Skjermet plass',
+                                                    bold: true,
+                                                    size: 26,
+                                                    font: 'Calibri'
+                                                })]
+                                            })],
+                                            verticalAlign: VerticalAlign.CENTER,
+                                            borders: {
+                                                top: thickBorder,
+                                                left: thinBorder,
+                                                right: thinBorder,
+                                                bottom: thickBorder
+                                            }
+                                        })
+                                    ] : []),
+                                    new TableCell({
+                                        children: [new Paragraph({
+                                            children: [new TextRun({
+                                                text: 'Lingdys',
+                                                bold: true,
+                                                size: 26,
+                                                font: 'Calibri'
+                                            })]
+                                        })],
+                                        verticalAlign: VerticalAlign.CENTER,
+                                        borders: {
+                                            top: thickBorder,
+                                            left: thinBorder,
+                                            right: thickBorder,
+                                            bottom: thickBorder
+                                        }
+                                    })
+                                ] : []),
+                                ...(!onlyTilrettelegging ? [
+                                    new TableCell({
+                                        children: [new Paragraph({
+                                            children: [new TextRun({
+                                                text: 'Møtt',
+                                                bold: true,
+                                                size: 26,
+                                                font: 'Calibri'
+                                            })]
+                                        })],
+                                        verticalAlign: VerticalAlign.CENTER
+                                    }),
+                                    new TableCell({
+                                        children: [new Paragraph({
+                                            children: [new TextRun({
+                                                text: 'Tidspunkt levert',
+                                                bold: true,
+                                                size: 26,
+                                                font: 'Calibri'
+                                            })]
+                                        })],
+                                        verticalAlign: VerticalAlign.CENTER
+                                    }),
+                                    new TableCell({
+                                        children: [new Paragraph({
+                                            children: [new TextRun({
+                                                text: 'Hendelser',
+                                                bold: true,
+                                                size: 26,
+                                                font: 'Calibri'
+                                            })]
+                                        })],
+                                        verticalAlign: VerticalAlign.CENTER
+                                    })
+                                ] : [])
                             ],
                             height: { value: 300, rule: 'atLeast' }
                         })
@@ -742,44 +1239,201 @@
                     students.forEach(student => {
                         const name = getDisplayName(student);
                         const pas = String(student['PAS kandidatnummer'] || '');
-                        const subject = `${student['Fagkode']} - ${student['Fagnavn']}`;
-                        const phone = String(student['Telefon'] || '');
+                        const subject = shortenSubject(student['Fagkode'], student['Fagnavn']);
+                        const phone = cleanPhoneNumber(student['Telefon']);
+                        const tilrette = getTilretteleggingFlags(student);
+
+                        // Student data row
+                        const studentCellBorders = onlyTilrettelegging ? {
+                            top: thickBorder,
+                            left: thickBorder,
+                            right: thinBorder,
+                            bottom: tilrette.annet ? thinBorder : thickBorder
+                        } : {};
+                        const lastCellBorders = onlyTilrettelegging ? {
+                            top: thickBorder,
+                            left: thinBorder,
+                            right: thickBorder,
+                            bottom: tilrette.annet ? thinBorder : thickBorder
+                        } : {};
 
                         tableRows.push(
                             new TableRow({
+                                cantSplit: true,
                                 children: [
                                     new TableCell({
-                                        children: [new Paragraph(name)],
-                                        verticalAlign: VerticalAlign.TOP
+                                        children: [new Paragraph({
+                                            children: [new TextRun({
+                                                text: name,
+                                                bold: true,
+                                                size: 24,
+                                                font: 'Calibri'
+                                            })]
+                                        })],
+                                        verticalAlign: VerticalAlign.TOP,
+                                        borders: studentCellBorders
                                     }),
                                     new TableCell({
-                                        children: [new Paragraph(pas)],
-                                        verticalAlign: VerticalAlign.TOP
+                                        children: [new Paragraph({
+                                            children: [new TextRun({
+                                                text: pas,
+                                                size: 24,
+                                                font: 'Calibri'
+                                            })]
+                                        })],
+                                        verticalAlign: VerticalAlign.TOP,
+                                        width: { size: 15, type: 'percent' },
+                                        borders: onlyTilrettelegging ? {
+                                            top: thickBorder,
+                                            left: thinBorder,
+                                            right: thinBorder,
+                                            bottom: tilrette.annet ? thinBorder : thickBorder
+                                        } : {}
                                     }),
                                     new TableCell({
-                                        children: [new Paragraph(subject)],
-                                        verticalAlign: VerticalAlign.TOP
+                                        children: [new Paragraph({
+                                            children: [new TextRun({
+                                                text: subject,
+                                                size: 24,
+                                                font: 'Calibri'
+                                            })]
+                                        })],
+                                        verticalAlign: VerticalAlign.TOP,
+                                        borders: onlyTilrettelegging ? {
+                                            top: thickBorder,
+                                            left: thinBorder,
+                                            right: thinBorder,
+                                            bottom: tilrette.annet ? thinBorder : thickBorder
+                                        } : {}
                                     }),
-                                    new TableCell({
-                                        children: [new Paragraph(phone)],
-                                        verticalAlign: VerticalAlign.TOP
-                                    }),
-                                    new TableCell({
-                                        children: [new Paragraph('')],
-                                        verticalAlign: VerticalAlign.TOP
-                                    }),
-                                    new TableCell({
-                                        children: [new Paragraph('')],
-                                        verticalAlign: VerticalAlign.TOP
-                                    }),
-                                    new TableCell({
-                                        children: [new Paragraph('')],
-                                        verticalAlign: VerticalAlign.TOP
-                                    })
+                                    ...(!onlyTilrettelegging ? [
+                                        new TableCell({
+                                            children: [new Paragraph({
+                                                children: [new TextRun({
+                                                    text: phone,
+                                                    size: 24,
+                                                    font: 'Calibri'
+                                                })]
+                                            })],
+                                            verticalAlign: VerticalAlign.TOP
+                                        })
+                                    ] : []),
+                                    ...(onlyTilrettelegging ? [
+                                        new TableCell({
+                                            children: [new Paragraph({
+                                                children: [new TextRun({
+                                                    text: tilrette.utvidetTid ? 'X' : '',
+                                                    size: 24,
+                                                    font: 'Calibri'
+                                                })],
+                                                alignment: AlignmentType.CENTER
+                                            })],
+                                            verticalAlign: VerticalAlign.CENTER,
+                                            borders: {
+                                                top: thickBorder,
+                                                left: thinBorder,
+                                                right: thinBorder,
+                                                bottom: tilrette.annet ? thinBorder : thickBorder
+                                            }
+                                        }),
+                                        ...(hasSkjermetPlass ? [
+                                            new TableCell({
+                                                children: [new Paragraph({
+                                                    children: [new TextRun({
+                                                        text: tilrette.skjermetPlass ? 'X' : '',
+                                                        size: 24,
+                                                        font: 'Calibri'
+                                                    })],
+                                                    alignment: AlignmentType.CENTER
+                                                })],
+                                                verticalAlign: VerticalAlign.CENTER,
+                                                borders: {
+                                                    top: thickBorder,
+                                                    left: thinBorder,
+                                                    right: thinBorder,
+                                                    bottom: tilrette.annet ? thinBorder : thickBorder
+                                                }
+                                            })
+                                        ] : []),
+                                        new TableCell({
+                                            children: [new Paragraph({
+                                                children: [new TextRun({
+                                                    text: tilrette.lingdys ? 'X' : '',
+                                                    size: 24,
+                                                    font: 'Calibri'
+                                                })],
+                                                alignment: AlignmentType.CENTER
+                                            })],
+                                            verticalAlign: VerticalAlign.CENTER,
+                                            borders: lastCellBorders
+                                        })
+                                    ] : []),
+                                    ...(!onlyTilrettelegging ? [
+                                        new TableCell({
+                                            children: [new Paragraph({
+                                                children: [new TextRun({
+                                                    text: '',
+                                                    size: 24,
+                                                    font: 'Calibri'
+                                                })]
+                                            })],
+                                            verticalAlign: VerticalAlign.TOP
+                                        }),
+                                        new TableCell({
+                                            children: [new Paragraph({
+                                                children: [new TextRun({
+                                                    text: '',
+                                                    size: 24,
+                                                    font: 'Calibri'
+                                                })]
+                                            })],
+                                            verticalAlign: VerticalAlign.TOP
+                                        }),
+                                        new TableCell({
+                                            children: [new Paragraph({
+                                                children: [new TextRun({
+                                                    text: '',
+                                                    size: 24,
+                                                    font: 'Calibri'
+                                                })]
+                                            })],
+                                            verticalAlign: VerticalAlign.TOP
+                                        })
+                                    ] : [])
                                 ],
                                 height: { value: 200, rule: 'atLeast' }
                             })
                         );
+
+                        // Blank spacing row for tilrettelegging export
+                        if (onlyTilrettelegging && tilrette.annet) {
+                            const columnCount = hasSkjermetPlass ? 6 : 5; // Navn, Kandidatnr, Fagkode-Fagnavn, Utvidet tid, (Skjermet plass), Lingdys
+                            tableRows.push(
+                                new TableRow({
+                                    cantSplit: true,
+                                    children: [
+                                        new TableCell({
+                                            children: [new Paragraph({
+                                                children: [new TextRun({
+                                                    text: 'Annet:',
+                                                    size: 24,
+                                                    font: 'Calibri'
+                                                })]
+                                            })],
+                                            columnSpan: columnCount,
+                                            verticalAlign: VerticalAlign.TOP,
+                                            borders: {
+                                                top: thinBorder,
+                                                left: thickBorder,
+                                                right: thickBorder,
+                                                bottom: thickBorder
+                                            }
+                                        })
+                                    ],
+                                    height: { value: 640, rule: 'atLeast' }
+                                })
+                            );
+                        }
                     });
 
                     // Add table to document
@@ -801,6 +1455,20 @@
                                 }
                             }
                         },
+                        footers: onlyTilrettelegging ? {
+                            default: new Footer({
+                                children: [
+                                    new Paragraph({
+                                        children: [new TextRun({
+                                            text: 'Unntatt offentligheten',
+                                            size: 18,
+                                            font: 'Calibri'
+                                        })],
+                                        alignment: AlignmentType.CENTER
+                                    })
+                                ]
+                            })
+                        } : undefined,
                         children: children
                     }]
                 });
@@ -823,16 +1491,25 @@
                 
                 // Generate modified blob
                 blob = await zip.generateAsync({type: 'blob'});
-                saveAs(blob, 'room_exam_tables.docx');
+                saveAs(
+                    blob,
+                    onlyTilrettelegging ? 'room_exam_tables_tilrettelegging.docx' : 'room_exam_tables.docx'
+                );
 
-                showStatus(`Room tables generated with ${sortedRooms.length} rooms`, 'success');
+                showStatus(
+                    onlyTilrettelegging
+                        ? `Tilretteleggingstabeller generert for ${sortedRooms.length} rom (${copiesPerRoom} kopier hver)`
+                        : `Romtabeller generert for ${sortedRooms.length} rom (${copiesPerRoom} kopier hver)`,
+                    'success'
+                );
 
             } catch (error) {
-                showStatus('Error generating room tables: ' + error.message, 'error');
+                showStatus('Feil ved generering av romtabeller: ' + error.message, 'error');
                 console.error(error);
             } finally {
                 generateBtn.disabled = false;
-                document.getElementById('generateTablesBtn').disabled = false;
+                generateTablesBtn.disabled = false;
+                generateTilretteTablesBtn.disabled = false;
                 spinner.classList.remove('visible');
             }
         }
@@ -841,13 +1518,13 @@
             if (!currentData) return;
 
             if (selectedDates.size === 0) {
-                showStatus('Please select at least one date to export', 'error');
+                showStatus('Vennligst velg minst én dato for eksport', 'error');
                 return;
             }
 
             generateBtn.disabled = true;
             spinner.classList.add('visible');
-            showStatus('Generating document...', 'processing');
+            showStatus('Genererer dokument...', 'processing');
 
             try {
                 // Check if docx library is loaded
@@ -1050,10 +1727,10 @@
                 const blob = await docx.Packer.toBlob(doc);
                 saveAs(blob, 'student_exam_cards.docx');
 
-                showStatus(`Document generated with ${sortedData.length} students`, 'success');
+                showStatus(`Dokument generert med ${sortedData.length} studenter`, 'success');
 
             } catch (error) {
-                showStatus('Error generating document: ' + error.message, 'error');
+                showStatus('Feil ved generering av dokument: ' + error.message, 'error');
                 console.error(error);
             } finally {
                 generateBtn.disabled = false;
