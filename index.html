@@ -1881,14 +1881,14 @@
             const children = [];
 
             // Title with date and room
-            children.push(new Paragraph({
-                children: [new TextRun({
+            children.push(new docx.Paragraph({
+                children: [new docx.TextRun({
                     text: `Tid og hjelpemidler - ${date} - Rom ${room}`,
                     bold: true,
                     size: 32,
                     font: 'Calibri'
                 })],
-                alignment: AlignmentType.CENTER,
+                alignment: docx.AlignmentType.CENTER,
                 spacing: { after: 400 }
             }));
 
@@ -1897,8 +1897,8 @@
                 const info = fagkodeInfo[fagkode];
                 
                 // Fagkode heading
-                children.push(new Paragraph({
-                    children: [new TextRun({
+                children.push(new docx.Paragraph({
+                    children: [new docx.TextRun({
                         text: fagkode,
                         bold: true,
                         size: 24,
@@ -1908,8 +1908,8 @@
                 }));
 
                 if (!info) {
-                    children.push(new Paragraph({
-                        children: [new TextRun({
+                    children.push(new docx.Paragraph({
+                        children: [new docx.TextRun({
                             text: 'Kunne ikke hente informasjon fra Utdanningsdirektoratet',
                             italics: true,
                             size: 22,
@@ -1920,8 +1920,8 @@
                     }));
                 } else {
                     // Normal exam times
-                    children.push(new Paragraph({
-                        children: [new TextRun({
+                    children.push(new docx.Paragraph({
+                        children: [new docx.TextRun({
                             text: 'Normale eksamenstider:',
                             bold: true,
                             size: 22,
@@ -1931,8 +1931,8 @@
                     }));
 
                     if (info.del1) {
-                        children.push(new Paragraph({
-                            children: [new TextRun({
+                        children.push(new docx.Paragraph({
+                            children: [new docx.TextRun({
                                 text: `Del 1: ${info.del1.start} - ${info.del1.end}`,
                                 size: 22,
                                 font: 'Calibri'
@@ -1942,8 +1942,8 @@
                     }
 
                     if (info.del2) {
-                        children.push(new Paragraph({
-                            children: [new TextRun({
+                        children.push(new docx.Paragraph({
+                            children: [new docx.TextRun({
                                 text: `Del 2: ${info.del2.start} - ${info.del2.end}`,
                                 size: 22,
                                 font: 'Calibri'
@@ -1954,8 +1954,8 @@
 
                     // Extended time version
                     if (info.del1) {
-                        children.push(new Paragraph({
-                            children: [new TextRun({
+                        children.push(new docx.Paragraph({
+                            children: [new docx.TextRun({
                                 text: 'Med utvidet tid (+1 time):',
                                 bold: true,
                                 size: 22,
@@ -1988,8 +1988,8 @@
                                 return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
                             };
 
-                            children.push(new Paragraph({
-                                children: [new TextRun({
+                            children.push(new docx.Paragraph({
+                                children: [new docx.TextRun({
                                     text: `Del 1: ${formatTime(del1StartMin)} - ${formatTime(del1EndMin)}`,
                                     size: 22,
                                     font: 'Calibri'
@@ -1997,8 +1997,8 @@
                                 spacing: { after: 50 }
                             }));
 
-                            children.push(new Paragraph({
-                                children: [new TextRun({
+                            children.push(new docx.Paragraph({
+                                children: [new docx.TextRun({
                                     text: `Del 2: ${formatTime(del2StartMin)} - ${formatTime(del2EndMin)}`,
                                     size: 22,
                                     font: 'Calibri'
@@ -2013,8 +2013,8 @@
                                 const mins = minutes % 60;
                                 return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
                             };
-                            children.push(new Paragraph({
-                                children: [new TextRun({
+                            children.push(new docx.Paragraph({
+                                children: [new docx.TextRun({
                                     text: `${info.del1.start} - ${formatTime(extendedEndMin)}`,
                                     size: 22,
                                     font: 'Calibri'
@@ -2026,8 +2026,8 @@
 
                     // Hjelpemidler
                     if (info.hjelpemidler) {
-                        children.push(new Paragraph({
-                            children: [new TextRun({
+                        children.push(new docx.Paragraph({
+                            children: [new docx.TextRun({
                                 text: 'Hjelpemidler under eksamen:',
                                 bold: true,
                                 size: 22,
@@ -2042,8 +2042,8 @@
                             .replace(/\s+/g, ' ') // Normalize whitespace
                             .trim();
 
-                        children.push(new Paragraph({
-                            children: [new TextRun({
+                        children.push(new docx.Paragraph({
+                            children: [new docx.TextRun({
                                 text: hjelpemidlerText,
                                 size: 22,
                                 font: 'Calibri'
