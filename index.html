@@ -447,7 +447,13 @@
         </div>
 
         <div id="datesContainer" style="display: none; margin-bottom: 20px;">
-            <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Velg eksamensdatoer:</h3>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
+                <h3 style="color: #222; margin-bottom: 0; font-size: 15px; font-weight: 600;">Velg eksamensdatoer:</h3>
+                <div style="display: flex; gap: 8px;">
+                    <button id="selectAllDatesBtn" type="button" class="btn btn-kandidatark" style="width: auto; padding: 8px 12px; font-size: 13px;" disabled>Velg alle</button>
+                    <button id="deselectAllDatesBtn" type="button" class="btn btn-kandidatark" style="width: auto; padding: 8px 12px; font-size: 13px;" disabled>Fjern alle</button>
+                </div>
+            </div>
             <div id="datesList" style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0;"></div>
         </div>
 
@@ -562,6 +568,8 @@
         const generateTilretteTablesBtn = document.getElementById('generateTilretteTablesBtn');
         const generateTimeHelpBtn = document.getElementById('generateTimeHelpBtn');
         const removeFileBtn = document.getElementById('removeFileBtn');
+        const selectAllDatesBtn = document.getElementById('selectAllDatesBtn');
+        const deselectAllDatesBtn = document.getElementById('deselectAllDatesBtn');
 
         // Remove file functionality
         removeFileBtn.addEventListener('click', () => {
@@ -572,11 +580,45 @@
             fileStats.textContent = '';
             datesContainer.style.display = 'none';
             datesList.innerHTML = '';
+            selectAllDatesBtn.disabled = true;
+            deselectAllDatesBtn.disabled = true;
             generateBtn.disabled = true;
             generateTablesBtn.disabled = true;
             generateTilretteTablesBtn.disabled = true;
             fileInput.value = '';
             status.className = 'status';
+        });
+
+        selectAllDatesBtn.addEventListener('click', () => {
+            const dateCheckboxes = datesList.querySelectorAll('input[type="checkbox"]');
+            dateCheckboxes.forEach(checkbox => {
+                if (!checkbox.checked) {
+                    checkbox.checked = true;
+                    checkbox.dispatchEvent(new Event('change'));
+                } else {
+                    const cell = checkbox.closest('.date-checkbox');
+                    if (cell) {
+                        cell.style.background = '#c8e6c9';
+                    }
+                }
+            });
+        });
+
+        deselectAllDatesBtn.addEventListener('click', () => {
+            selectedDates.clear();
+
+            const dateCheckboxes = datesList.querySelectorAll('input[type="checkbox"]');
+            dateCheckboxes.forEach(checkbox => {
+                if (checkbox.checked) {
+                    checkbox.checked = false;
+                    checkbox.dispatchEvent(new Event('change'));
+                } else {
+                    const cell = checkbox.closest('.date-checkbox');
+                    if (cell) {
+                        cell.style.background = '#f0f0f0';
+                    }
+                }
+            });
         });
 
         // Track sort preference changes
@@ -721,6 +763,8 @@
                 return parseDate(a) - parseDate(b);
             });
             selectedDates = new Set(uniqueDates); // Default: all selected
+            selectAllDatesBtn.disabled = uniqueDates.length === 0;
+            deselectAllDatesBtn.disabled = uniqueDates.length === 0;
 
             // Clear and populate the dates list
             datesList.innerHTML = '';
