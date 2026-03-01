@@ -1760,7 +1760,15 @@
                 selectedFagkodes.clear();
                 twoPartExamsList.innerHTML = '';
                 
-                Array.from(twoPartExams.values()).forEach(({ date, fagkode, fagnavn }) => {
+                // Sort by date, then by fagnavn
+                const sortedExams = Array.from(twoPartExams.values()).sort((a, b) => {
+                    // First sort by date
+                    if (a.date !== b.date) return a.date.localeCompare(b.date);
+                    // Then sort by fagnavn
+                    return a.fagnavn.localeCompare(b.fagnavn);
+                });
+                
+                sortedExams.forEach(({ date, fagkode, fagnavn }) => {
                     // Add to selected set by default
                     selectedFagkodes.add(fagkode);
                     
