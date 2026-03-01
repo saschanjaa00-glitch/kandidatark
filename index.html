@@ -915,7 +915,13 @@
             // Display warning if students without rooms found
             if (missingRooms.length > 0) {
                 let html = '';
+                let lastDate = null;
                 missingRooms.forEach(student => {
+                    // Add horizontal line between different dates
+                    if (lastDate !== null && lastDate !== student.date) {
+                        html += '<hr style="border: none; border-top: 1px solid #d39e00; margin: 8px 0;">';
+                    }
+                    lastDate = student.date;
                     html += `<div><strong>${student.name}</strong> (${student.kandidatnummer}) - ${student.date}: ${student.fagkode}</div>`;
                 });
                 missingRoomsList.innerHTML = html;
