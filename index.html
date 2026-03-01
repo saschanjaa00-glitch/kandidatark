@@ -443,7 +443,7 @@
         </div>
 
         <div class="upload-area" id="uploadArea">
-            <div class="upload-icon">�</div>
+            <div class="upload-icon">📤</div>
             <div class="upload-text">Klikk for å velge eller dra Excel-fil hit</div>
             <div class="upload-hint">Støtter .xlsx og .xls filer</div>
         </div>
@@ -589,25 +589,6 @@
         <div class="spinner" id="spinner"></div>
         <div class="status" id="status"></div>
 
-        <div class="required-columns">
-            <h3>Excel-kolonner:</h3>
-            <p style="color: #555; font-size: 13px; margin-bottom: 10px; font-weight: 500;">Obligatoriske:</p>
-            <ul style="margin-bottom: 15px;">
-                <li>Rom</li>
-                <li>Fagkode</li>
-                <li>Fagnavn</li>
-                <li>Fornavn</li>
-                <li>Etternavn</li>
-                <li>Eksamensdato</li>
-                <li>PAS kandidatnummer</li>
-            </ul>
-            <p style="color: #555; font-size: 13px; margin-bottom: 10px; font-weight: 500;">Valgfrie:</p>
-            <ul>
-                <li>Telefon (brukes i romtabeller)</li>
-                <li>eksamenstilrettelegginger (brukes i tilretteleggingstabeller)</li>
-            </ul>
-        </div>
-
         <div class="info-section" style="margin-top: 40px; padding: 20px; background-color: #f9f9f9; border-radius: 5px;">
             <h3 style="margin-top: 0; color: #333;">Personvern/Datasikkerhet</h3>
             <p style="color: #666; font-size: 14px; line-height: 1.6;">
@@ -615,10 +596,35 @@
             </p>
             <ul style="color: #666; font-size: 14px; line-height: 1.6; margin-left: 20px;">
                 <li>All data du laster opp behandles kun i nettleseren din og lagres ikke på serveren.</li>
+                <li>QR-koder er generert i nettleser, bruker ikke eksterne nettsider.</li>
                 <li>Data slettes automatisk fra minnet når du oppdaterer siden eller lukker nettleseren.</li>
                 <li>Det er ikke mulig å gjenopprette data etter at siden er lastet på nytt.</li>
                 <li>Hvis du ønsker å generere dokumenter på nytt, må du laste opp filen på nytt og velge datoer igjen.</li>
             </ul>
+        </div>
+
+        <div class="required-columns" style="margin-top: 20px;">
+            <div style="color: #555; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none; padding: 10px; background: #f9f9f9; border-radius: 4px;" onclick="document.getElementById('excelColumnsList').style.display = document.getElementById('excelColumnsList').style.display === 'none' ? 'block' : 'none'; this.querySelector('span').textContent = document.getElementById('excelColumnsList').style.display === 'none' ? '▶' : '▼';">
+                <span style="font-size: 12px;">▶</span>
+                <h3 style="margin: 0; font-size: 15px;">Excel-kolonner</h3>
+            </div>
+            <div id="excelColumnsList" style="display: none; padding: 10px;">
+                <p style="color: #555; font-size: 13px; margin-bottom: 10px; font-weight: 500;">Obligatoriske:</p>
+                <ul style="margin-bottom: 15px;">
+                    <li>Rom</li>
+                    <li>Fagkode</li>
+                    <li>Fagnavn</li>
+                    <li>Fornavn</li>
+                    <li>Etternavn</li>
+                    <li>Eksamensdato</li>
+                    <li>PAS kandidatnummer</li>
+                </ul>
+                <p style="color: #555; font-size: 13px; margin-bottom: 10px; font-weight: 500;">Valgfrie:</p>
+                <ul>
+                    <li>Telefon (brukes i romtabeller)</li>
+                    <li>eksamenstilrettelegginger (brukes i tilretteleggingstabeller)</li>
+                </ul>
+            </div>
         </div>
     </div>
 
