@@ -890,14 +890,27 @@
                 duplicatesList.innerHTML = '';
             }
             
-            // Find students without assigned rooms
+            // Call updateWarnings to check for missing rooms
+            updateWarnings();
+        }
+        
+        function updateWarnings() {
+            if (!currentData) return;
+            
+            // Find students without assigned rooms (only for selected dates)
             const missingRooms = [];
             currentData.forEach(student => {
                 const room = String(student['Rom'] || '').trim();
+                const date = formatDate(student['Eksamensdato']);
+                
+                // Only check if date is selected
+                if (!selectedDates.has(date)) {
+                    return;
+                }
+                
                 if (!room || room === '' || room === 'undefined' || room === 'null') {
                     const name = `${student['Fornavn']} ${student['Etternavn']}`;
                     const firstName = String(student['Fornavn']).trim();
-                    const date = formatDate(student['Eksamensdato']);
                     const fagkode = String(student['Fagkode']).trim();
                     const kandidatnummer = student['PAS kandidatnummer'];
                     missingRooms.push({ name, firstName, kandidatnummer, date, fagkode });
@@ -970,7 +983,18 @@
                 };
                 return parseDate(a) - parseDate(b);
             });
-            selectedDates = new Set(uniqueDates); // Default: all selected
+            
+            // Default: select all dates that haven't passed (today and future)
+            const today = new Date();
+            today.setHours(0, 0, 0, 0); // Reset time to start of day
+            
+            selectedDates = new Set(uniqueDates.filter(dateStr => {
+                const parts = dateStr.split('.');
+                const examDate = new Date(parts[2], parts[1] - 1, parts[0]);
+                examDate.setHours(0, 0, 0, 0);
+                return examDate >= today; // Only select dates today or in the future
+            }));
+            
             selectAllDatesBtn.disabled = uniqueDates.length === 0;
             deselectAllDatesBtn.disabled = uniqueDates.length === 0;
 
@@ -1052,16 +1076,25 @@
                     cell.style.gridColumn = dayOfWeek;
                     
                     if (datesWithExams.has(dateStr)) {
+                        // Check if date has passed
+                        const today = new Date();
+                        today.setHours(0, 0, 0, 0);
+                        const examDate = new Date(currentDate);
+                        examDate.setHours(0, 0, 0, 0);
+                        const isPastDate = examDate < today;
+                        
                         // Has exam - make entire box clickable
                         cell.className = 'date-checkbox';
                         cell.style.cursor = 'pointer';
-                        cell.style.background = '#c8e6c9'; // Light green for selected
+                        
+                        const isChecked = selectedDates.has(dateStr);
+                        cell.style.background = isChecked ? '#c8e6c9' : '#f0f0f0'; // Light green for selected, grey for unselected
                         
                         const checkbox = document.createElement('input');
                         checkbox.type = 'checkbox';
                         checkbox.id = `date-${dateStr}`;
                         checkbox.value = dateStr;
-                        checkbox.checked = true;
+                        checkbox.checked = isChecked;
                         checkbox.style.display = 'none'; // Hide checkbox, use box as click target
                         checkbox.addEventListener('change', (e) => {
                             if (e.target.checked) {
@@ -1072,6 +1105,7 @@
                                 cell.style.background = '#f0f0f0';
                             }
                             updateTwoPartExamsInfo();
+                            updateWarnings(); // Update warnings when dates change
                         });
 
                         const label = document.createElement('label');
