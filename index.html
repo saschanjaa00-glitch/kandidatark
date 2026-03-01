@@ -831,6 +831,9 @@
                     // Extract and display unique dates
                     displayDateOptions(filteredData);
                     
+                    // Update warnings (must be after displayDateOptions to have selectedDates populated)
+                    updateWarnings();
+                    
                     // Update 2-part exams info panel
                     updateTwoPartExamsInfo();
                     
@@ -895,9 +898,6 @@
                 duplicatesWarning.style.display = 'none';
                 duplicatesList.innerHTML = '';
             }
-            
-            // Call updateWarnings to check for missing rooms
-            updateWarnings();
         }
         
         function updateWarnings() {
