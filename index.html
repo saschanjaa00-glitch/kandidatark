@@ -494,6 +494,60 @@
                     </div>
                 </div>
                 <button class="btn btn-kandidatark" id="generateBtn" disabled>Generer kandidatark</button>
+
+                <!-- QR Code Section -->
+                <div style="border-top: 1px solid #ddd; padding-top: 15px;">
+                    <h4 style="color: #222; margin-bottom: 12px; font-size: 14px; font-weight: 600;">QR-koder for eksamener</h4>
+                    <p style="color: #666; margin-bottom: 12px; font-size: 12px;">
+                        Genererer ark med QR-kode for eksamener. All behandling skjer lokalt i nettleseren.
+                    </p>
+                    
+                    <!-- Info panel for 2-part exams -->
+                    <div id="twoPartExamsInfo" style="background: #e8f4f8; border: 1px solid #b3d9e6; border-radius: 4px; padding: 12px; margin-bottom: 15px; display: none;">
+                        <p style="color: #0066cc; font-size: 13px; font-weight: 600; margin-bottom: 8px;">Todelte eksamener i valgte datoer:</p>
+                        <div id="twoPartExamsList" style="color: #333; font-size: 12px; line-height: 1.6;"></div>
+                    </div>
+
+                    <div style="display: flex; flex-direction: column; gap: 15px;">
+                        <!-- Del selection -->
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <p style="color: #222; font-size: 13px; font-weight: 600;">Velg eksamensdelene:</p>
+                            <div style="display: flex; gap: 15px;">
+                                <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
+                                    <input type="checkbox" id="includeDel1" checked style="margin-right: 6px; width: 16px; height: 16px;">
+                                    Del 1
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
+                                    <input type="checkbox" id="includeDel2" checked style="margin-right: 6px; width: 16px; height: 16px;">
+                                    Del 2
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Sorting options -->
+                        <div style="display: flex; flex-direction: column; gap: 8px;">
+                            <p style="color: #222; font-size: 13px; font-weight: 600;">Sortering:</p>
+                            <div style="display: flex; flex-direction: column; gap: 8px;">
+                                <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
+                                    <input type="radio" name="qrSortOption" value="byDel" id="sortByDel" checked style="margin-right: 6px; width: 16px; height: 16px;">
+                                    Sorter etter Del (alle Del 1, så alle Del 2)
+                                </label>
+                                <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
+                                    <input type="radio" name="qrSortOption" value="byRomName" id="sortByRomName" style="margin-right: 6px; width: 16px; height: 16px;">
+                                    Sorter etter Rom og navn (Del 1 og 2 sammen per student)
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Override requirement -->
+                        <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
+                            <input type="checkbox" id="overrideQRRequirement" style="margin-right: 6px; width: 16px; height: 16px;">
+                            Generer QR-ark for alle eksamen (ikke bare todelte)
+                        </label>
+
+                        <button class="btn btn-kandidatark" id="generateQRBtn" disabled>Generer QR-ark</button>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -518,51 +572,7 @@
             </div>
         </div>
 
-        <div id="qrCodeContainer" style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
-            <h3 style="color: #222; margin-bottom: 8px; font-size: 15px; font-weight: 600;">QR-koder for todelte eksamener</h3>
-            <p style="color: #666; margin-bottom: 12px; font-size: 12px;">
-                Genererer ark med QR-kode for eksamener med Del 1 og Del 2. All behandling skjer lokalt i nettleseren.
-            </p>
-            
-            <!-- Info panel for 2-part exams -->
-            <div id="twoPartExamsInfo" style="background: #e8f4f8; border: 1px solid #b3d9e6; border-radius: 4px; padding: 12px; margin-bottom: 15px; display: none;">
-                <p style="color: #0066cc; font-size: 13px; font-weight: 600; margin-bottom: 8px;">Todelte eksamener i valgte datoer:</p>
-                <div id="twoPartExamsList" style="color: #333; font-size: 12px; line-height: 1.6;"></div>
-            </div>
-
-            <div style="display: flex; flex-direction: column; gap: 15px;">
-                <!-- Del selection -->
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <p style="color: #222; font-size: 13px; font-weight: 600;">Velg eksamensdelene:</p>
-                    <div style="display: flex; gap: 15px;">
-                        <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
-                            <input type="checkbox" id="includeDel1" checked style="margin-right: 6px; width: 16px; height: 16px;">
-                            Del 1
-                        </label>
-                        <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
-                            <input type="checkbox" id="includeDel2" checked style="margin-right: 6px; width: 16px; height: 16px;">
-                            Del 2
-                        </label>
-                    </div>
-                </div>
-
-                <!-- Sorting options -->
-                <div style="display: flex; flex-direction: column; gap: 8px;">
-                    <p style="color: #222; font-size: 13px; font-weight: 600;">Sortering:</p>
-                    <div style="display: flex; flex-direction: column; gap: 8px;">
-                        <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
-                            <input type="radio" name="qrSortOption" value="byDel" id="sortByDel" checked style="margin-right: 6px; width: 16px; height: 16px;">
-                            Sorter etter Del (alle Del 1, så alle Del 2)
-                        </label>
-                        <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
-                            <input type="radio" name="qrSortOption" value="byRomName" id="sortByRomName" style="margin-right: 6px; width: 16px; height: 16px;">
-                            Sorter etter Rom og navn (Del 1 og 2 sammen per student)
-                        </label>
-                    </div>
-                </div>
-
-                <button class="btn btn-kandidatark" id="generateQRBtn" disabled>Generer QR-ark for todelte eksamener</button>
-            </div>
+        <div id="qrCodeContainer" style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px; display: none;">
         </div>
 
         <div class="spinner" id="spinner"></div>
@@ -642,6 +652,7 @@
         const includeDel2Checkbox = document.getElementById('includeDel2');
         const sortByDelRadio = document.getElementById('sortByDel');
         const sortByRomNameRadio = document.getElementById('sortByRomName');
+        const overrideQRRequirement = document.getElementById('overrideQRRequirement');
         const twoPartExamsInfo = document.getElementById('twoPartExamsInfo');
         const twoPartExamsList = document.getElementById('twoPartExamsList');
         const removeFileBtn = document.getElementById('removeFileBtn');
@@ -1719,6 +1730,7 @@
         function updateTwoPartExamsInfo() {
             if (!currentData || selectedDates.size === 0) {
                 twoPartExamsInfo.style.display = 'none';
+                generateQRBtn.disabled = true;
                 return;
             }
 
@@ -1737,17 +1749,22 @@
                 }
             }
 
-            if (twoPartExams.size === 0) {
+            // Enable/disable button based on 2-part exams or override
+            if (twoPartExams.size > 0) {
+                generateQRBtn.disabled = false;
+                twoPartExamsInfo.style.display = 'block';
+                twoPartExamsList.innerHTML = Array.from(twoPartExams)
+                    .map(([fagkode, fagnavn]) => `<div style="margin-bottom: 4px;"><strong>${fagkode}</strong> - ${fagnavn}</div>`)
+                    .join('');
+            } else {
                 twoPartExamsInfo.style.display = 'none';
-                return;
+                // Enable button only if override is checked
+                generateQRBtn.disabled = !overrideQRRequirement.checked;
             }
-
-            // Display the info
-            twoPartExamsInfo.style.display = 'block';
-            twoPartExamsList.innerHTML = Array.from(twoPartExams)
-                .map(([fagkode, fagnavn]) => `<div style="margin-bottom: 4px;"><strong>${fagkode}</strong> - ${fagnavn}</div>`)
-                .join('');
         }
+
+        // Update button state when override checkbox changes
+        overrideQRRequirement.addEventListener('change', updateTwoPartExamsInfo);
 
         async function generateDocument() {
             if (!currentData) return;
@@ -2076,21 +2093,30 @@
                     return selectedDates.has(date);
                 });
 
-                // Get students with two-part exams
+                // Get students with two-part exams (or all exams if override is checked)
                 const twoPartStudents = [];
+                const useOverride = overrideQRRequirement.checked;
                 
                 for (const student of filteredData) {
                     const fagkode = student['Fagkode'];
                     const examInfo = examDatabase[fagkode];
                     
-                    // Check if exam has two parts
-                    if (examInfo && examInfo.del1 && examInfo.del2) {
+                    if (useOverride) {
+                        // Include all exams when override is enabled
                         twoPartStudents.push(student);
+                    } else {
+                        // Check if exam has two parts
+                        if (examInfo && examInfo.del1 && examInfo.del2) {
+                            twoPartStudents.push(student);
+                        }
                     }
                 }
 
                 if (twoPartStudents.length === 0) {
-                    showStatus('Ingen todelte eksamener funnet i valgte data', 'error');
+                    const message = useOverride 
+                        ? 'Ingen eksamener funnet i valgte data' 
+                        : 'Ingen todelte eksamener funnet i valgte data';
+                    showStatus(message, 'error');
                     generateQRBtn.disabled = false;
                     spinner.classList.remove('visible');
                     return;
