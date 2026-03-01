@@ -113,6 +113,10 @@
         .file-stats {
             color: #666;
             font-size: 13px;
+            background: #eff6ff;
+            padding: 10px 15px;
+            border-radius: 4px;
+            display: inline-block;
         }
 
         .remove-file-btn {
@@ -823,7 +827,7 @@
 
                     currentData = filteredData;
                     fileName.textContent = file.name;
-                    fileStats.textContent = `${filteredData.length} studenter funnet`;
+                    fileStats.textContent = `${filteredData.length} eksamensregistreringer funnet`;
                     fileInfo.classList.add('visible');
                     
                     // Check for duplicate kandidatnummer on same day
