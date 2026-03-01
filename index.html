@@ -466,6 +466,14 @@
             <div id="duplicatesList" style="display: none; color: #856404; line-height: 1.3; font-size: 11px; margin-top: 4px;"></div>
         </div>
 
+        <div id="missingRoomsWarning" style="display: none; background: #fff3cd; padding: 6px 10px; border-radius: 4px; border: 1px solid #ffc107; margin-bottom: 10px; font-size: 12px;">
+            <div style="color: #d39e00; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none;" onclick="document.getElementById('missingRoomsList').style.display = document.getElementById('missingRoomsList').style.display === 'none' ? 'block' : 'none'; this.querySelector('span').textContent = document.getElementById('missingRoomsList').style.display === 'none' ? '▶' : '▼';">
+                <span style="font-size: 10px;">▶</span>
+                <span>⚠ Kandidater uten tildelt rom</span>
+            </div>
+            <div id="missingRoomsList" style="display: none; color: #856404; line-height: 1.3; font-size: 11px; margin-top: 4px;"></div>
+        </div>
+
         <div id="datesContainer" style="display: none; margin-bottom: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
                 <h3 style="color: #222; margin-bottom: 0; font-size: 15px; font-weight: 600;">Velg eksamensdatoer:</h3>
@@ -663,6 +671,8 @@
         const selectAllDatesBtn = document.getElementById('selectAllDatesBtn');
         const duplicatesWarning = document.getElementById('duplicatesWarning');
         const duplicatesList = document.getElementById('duplicatesList');
+        const missingRoomsWarning = document.getElementById('missingRoomsWarning');
+        const missingRoomsList = document.getElementById('missingRoomsList');
         removeFileBtn.addEventListener('click', () => {
             currentData = null;
             selectedDates = new Set();
@@ -672,6 +682,8 @@
             datesContainer.style.display = 'none';
             datesList.innerHTML = '';
             selectAllDatesBtn.disabled = true;
+            duplicatesWarning.style.display = 'none';
+            missingRoomsWarning.style.display = 'none';
             deselectAllDatesBtn.disabled = true;
             duplicatesWarning.style.display = 'none';
             duplicatesList.innerHTML = '';
@@ -876,6 +888,32 @@
             } else {
                 duplicatesWarning.style.display = 'none';
                 duplicatesList.innerHTML = '';
+            }
+            
+            // Find students without assigned rooms
+            const missingRooms = [];
+            currentData.forEach(student => {
+                const room = String(student['Rom'] || '').trim();
+                if (!room || room === '' || room === 'undefined' || room === 'null') {
+                    const name = `${student['Fornavn']} ${student['Etternavn']}`;
+                    const date = formatDate(student['Eksamensdato']);
+                    const fagkode = String(student['Fagkode']).trim();
+                    const kandidatnummer = student['PAS kandidatnummer'];
+                    missingRooms.push({ name, kandidatnummer, date, fagkode });
+                }
+            });
+            
+            // Display warning if students without rooms found
+            if (missingRooms.length > 0) {
+                let html = '';
+                missingRooms.forEach(student => {
+                    html += `<div><strong>${student.name}</strong> (${student.kandidatnummer}) - ${student.date}: ${student.fagkode}</div>`;
+                });
+                missingRoomsList.innerHTML = html;
+                missingRoomsWarning.style.display = 'block';
+            } else {
+                missingRoomsWarning.style.display = 'none';
+                missingRoomsList.innerHTML = '';
             }
         }
 
