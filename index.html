@@ -708,37 +708,19 @@
                         }
                     }
 
-                    // Remove exact duplicate rows (all fields identical)
-                    const dedupedData = [];
-                    const seenRowKeys = new Set();
-
-                    filteredData.forEach(student => {
-                        const rowKey = JSON.stringify(student);
-                        if (!seenRowKeys.has(rowKey)) {
-                            seenRowKeys.add(rowKey);
-                            dedupedData.push(student);
-                        }
-                    });
-
-                    currentData = dedupedData;
+                    currentData = filteredData;
                     fileName.textContent = file.name;
-                    fileStats.textContent = `${dedupedData.length} studenter funnet`;
+                    fileStats.textContent = `${filteredData.length} studenter funnet`;
                     fileInfo.classList.add('visible');
                     
                     // Extract and display unique dates
-                    displayDateOptions(dedupedData);
+                    displayDateOptions(filteredData);
                     
                     generateBtn.disabled = false;
                     generateTablesBtn.disabled = false;
                     generateTilretteTablesBtn.disabled = false;
                     generateTimeHelpBtn.disabled = false;
-
-                    const duplicateCount = filteredData.length - dedupedData.length;
-                    if (duplicateCount > 0) {
-                        showStatus(`Fil lastet inn (${duplicateCount} duplikat(er) fjernet)`, 'success');
-                    } else {
-                        showStatus('Fil lastet inn', 'success');
-                    }
+                    showStatus('Fil lastet inn', 'success');
 
                 } catch (error) {
                     showStatus('Feil ved lesing av Excel-fil: ' + error.message, 'error');
