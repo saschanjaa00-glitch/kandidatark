@@ -823,7 +823,7 @@
 
                     currentData = filteredData;
                     fileName.textContent = file.name;
-                    fileStats.textContent = `${filteredData.length} eksamensregistreringer funnet`;
+                    fileStats.textContent = `✓ Fil lastet inn - ${filteredData.length} eksamensregistreringer funnet`;
                     fileInfo.classList.add('visible');
                     
                     // Check for duplicate kandidatnummer on same day
@@ -843,7 +843,6 @@
                     generateTilretteTablesBtn.disabled = false;
                     generateTimeHelpBtn.disabled = false;
                     generateQRBtn.disabled = false;
-                    showStatus('Fil lastet inn', 'success');
 
                 } catch (error) {
                     showStatus('Feil ved lesing av Excel-fil: ' + error.message, 'error');
