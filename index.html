@@ -1851,9 +1851,12 @@
                 const html = await response.text();
                 
                 // Parse the HTML to extract exam timing and hjelpemidler
-                const timingMatch = html.match(/Del\s+1\s*\((\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\)(.*?)(Del\s+2|Alle hjelpemidler|Har du spørsmål)/s);
-                const del2Match = html.match(/Del\s+2\s*\((\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\)/s);
-                const hjelpemidlerMatch = html.match(/Hjelpemidler under eksamen(.*?)(Har du spørsmål|Additional Links)/s);
+                // Look for Del 1 timing - handle various whitespace patterns
+                const timingMatch = html.match(/Del\s+1[:\s]*\(?(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\)?/);
+                const del2Match = html.match(/Del\s+2[:\s]*\(?(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\)?/);
+                
+                // Look for hjelpemidler section - more flexible pattern
+                const hjelpemidlerMatch = html.match(/Hjelpemidler\s+under\s+eksamen([\s\S]*?)(?=Har du spørsmål|<\/main|$)/i);
                 
                 return {
                     fagkode: fagkode,
