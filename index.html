@@ -2405,6 +2405,24 @@
                         ],
                         alignment: AlignmentType.CENTER
                     }));
+
+                    // Line break
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 280 }
+                    }));
+
+                    // Date - Size 14, Calibri
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: formatDate(student['Eksamensdato']),
+                                size: 28, // 14pt * 2
+                                font: 'Calibri'
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    }));
                 }
 
                 const doc = new Document({
