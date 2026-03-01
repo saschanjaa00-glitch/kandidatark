@@ -446,6 +446,11 @@
             <button class="remove-file-btn" id="removeFileBtn">Fjern fil</button>
         </div>
 
+        <div id="duplicatesWarning" style="display: none; background: #fff3cd; padding: 12px; border-radius: 6px; border: 1px solid #ffc107; margin-bottom: 15px; font-size: 13px;">
+            <div style="color: #d39e00; font-weight: 600; margin-bottom: 8px;">⚠ Advarsel: Samme kandidat flere ganger på samme dag</div>
+            <div id="duplicatesList" style="color: #856404; line-height: 1.5;"></div>
+        </div>
+
         <div id="datesContainer" style="display: none; margin-bottom: 20px;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; gap: 10px;">
                 <h3 style="color: #222; margin-bottom: 0; font-size: 15px; font-weight: 600;">Velg eksamensdatoer:</h3>
@@ -569,9 +574,8 @@
         const generateTimeHelpBtn = document.getElementById('generateTimeHelpBtn');
         const removeFileBtn = document.getElementById('removeFileBtn');
         const selectAllDatesBtn = document.getElementById('selectAllDatesBtn');
-        const deselectAllDatesBtn = document.getElementById('deselectAllDatesBtn');
-
-        // Remove file functionality
+        const duplicatesWarning = document.getElementById('duplicatesWarning');
+        const duplicatesList = document.getElementById('duplicatesList');
         removeFileBtn.addEventListener('click', () => {
             currentData = null;
             selectedDates = new Set();
@@ -582,6 +586,8 @@
             datesList.innerHTML = '';
             selectAllDatesBtn.disabled = true;
             deselectAllDatesBtn.disabled = true;
+            duplicatesWarning.style.display = 'none';
+            duplicatesList.innerHTML = '';
             generateBtn.disabled = true;
             generateTablesBtn.disabled = true;
             generateTilretteTablesBtn.disabled = true;
@@ -765,15 +771,19 @@
                 });
             });
             
-            // Show alert if duplicates found
+            // Display warning in section if duplicates found
             if (duplicates.length > 0) {
-                let alertMessage = 'Advarsel: Samme kandidat (kandidatnummer) vises flere ganger på samme dag:\n\n';
+                let html = '';
                 duplicates.forEach(dup => {
                     const name = `${dup.students[0]['Fornavn']} ${dup.students[0]['Etternavn']}`;
                     const fagkoder = dup.students.map(s => String(s['Fagkode']).trim()).join(', ');
-                    alertMessage += `${name} (${dup.kandidatnummer}) - ${dup.date}:\n  Fagkoder: ${fagkoder}\n\n`;
+                    html += `<div><strong>${name}</strong> (${dup.kandidatnummer}) - ${dup.date}: ${fagkoder}</div>`;
                 });
-                alert(alertMessage);
+                duplicatesList.innerHTML = html;
+                duplicatesWarning.style.display = 'block';
+            } else {
+                duplicatesWarning.style.display = 'none';
+                duplicatesList.innerHTML = '';
             }
         }
 
