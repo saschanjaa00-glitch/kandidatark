@@ -1844,44 +1844,49 @@
             }
         }
 
+        // Embedded exam database - data fetched from udir.no
+        const examDatabase = {
+            'FSP6152': { fagkode: 'FSP6152', del1: { start: '09:00', end: '13:00', startMinutes: 540, endMinutes: 780 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbaserte hjelpemidler.' },
+            'FSP6222': { fagkode: 'FSP6222', del1: { start: '09:00', end: '13:00', startMinutes: 540, endMinutes: 780 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbaserte hjelpemidler.' },
+            'FSP6242': { fagkode: 'FSP6242', del1: { start: '09:00', end: '13:00', startMinutes: 540, endMinutes: 780 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbaserte hjelpemidler.' },
+            'FSP6349': { fagkode: 'FSP6349', del1: { start: '09:00', end: '13:00', startMinutes: 540, endMinutes: 780 }, del2: null, hjelpemidler: 'Denne eksamenen har ikke innebygd stavekontroll i oppgaven. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'FSP6499': { fagkode: 'FSP6499', del1: { start: '09:00', end: '13:00', startMinutes: 540, endMinutes: 780 }, del2: null, hjelpemidler: 'Denne eksamenen har ikke innebygd stavekontroll i oppgaven. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'FSP6502': { fagkode: 'FSP6502', del1: { start: '09:00', end: '13:00', startMinutes: 540, endMinutes: 780 }, del2: null, hjelpemidler: 'Denne eksamenen har ikke innebygd stavekontroll i oppgaven. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'IDR2026': { fagkode: 'IDR2026', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen.' },
+            'IDR2027': { fagkode: 'IDR2027', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen.' },
+            'MAT1021': { fagkode: 'MAT1021', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'MAT1023': { fagkode: 'MAT1023', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'NOR1267': { fagkode: 'NOR1267', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'NOR1268': { fagkode: 'NOR1268', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt sidemål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'NOR1420': { fagkode: 'NOR1420', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
+            'PSP5800': { fagkode: 'PSP5800', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbaserte hjelpemidler.' },
+            'PSP5986': { fagkode: 'PSP5986', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbaserte hjelpemidler.' },
+            'PSP5992': { fagkode: 'PSP5992', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har ikke innebygd stavekontroll i oppgaven. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'PSP6010': { fagkode: 'PSP6010', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har ikke innebygd stavekontroll i oppgaven. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'REA3036': { fagkode: 'REA3036', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3039': { fagkode: 'REA3039', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3043': { fagkode: 'REA3043', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbasierte hjelpemidler.' },
+            'REA3046': { fagkode: 'REA3046', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3056': { fagkode: 'REA3056', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3058': { fagkode: 'REA3058', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3060': { fagkode: 'REA3060', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3062': { fagkode: 'REA3062', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'SAM3046': { fagkode: 'SAM3046', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
+            'SAM3051': { fagkode: 'SAM3051', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
+            'SAM3058': { fagkode: 'SAM3058', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
+            'SAM3061': { fagkode: 'SAM3061', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'SAM3073': { fagkode: 'SAM3073', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
+            'SPR3029': { fagkode: 'SPR3029', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'SPR3031': { fagkode: 'SPR3031', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' }
+        };
+
         async function fetchExamInfo(fagkode) {
-            const url = `https://kandidat.udir.no/eksamensinfo/${fagkode}`;
-            const corsProxy = `https://api.allorigins.win/raw?url=`;
-            try {
-                const response = await fetch(corsProxy + encodeURIComponent(url));
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
-                const html = await response.text();
-                
-                // Parse the HTML to extract exam timing and hjelpemidler
-                // Look for Del 1 timing - handle various whitespace patterns
-                const timingMatch = html.match(/Del\s+1[:\s]*\(?(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\)?/);
-                const del2Match = html.match(/Del\s+2[:\s]*\(?(\d{2}):(\d{2})\s*-\s*(\d{2}):(\d{2})\)?/);
-                
-                // Look for hjelpemidler section - more flexible pattern
-                const hjelpemidlerMatch = html.match(/Hjelpemidler\s+under\s+eksamen([\s\S]*?)(?=Har du spørsmål|<\/main|$)/i);
-                
-                return {
-                    fagkode: fagkode,
-                    del1: timingMatch ? {
-                        start: `${timingMatch[1]}:${timingMatch[2]}`,
-                        end: `${timingMatch[3]}:${timingMatch[4]}`,
-                        startMinutes: parseInt(timingMatch[1]) * 60 + parseInt(timingMatch[2]),
-                        endMinutes: parseInt(timingMatch[3]) * 60 + parseInt(timingMatch[4])
-                    } : null,
-                    del2: del2Match ? {
-                        start: `${del2Match[1]}:${del2Match[2]}`,
-                        end: `${del2Match[3]}:${del2Match[4]}`,
-                        startMinutes: parseInt(del2Match[1]) * 60 + parseInt(del2Match[2]),
-                        endMinutes: parseInt(del2Match[3]) * 60 + parseInt(del2Match[4])
-                    } : null,
-                    hjelpemidler: hjelpemidlerMatch ? hjelpemidlerMatch[1].trim() : null
-                };
-            } catch (error) {
-                console.error(`Feil ved henting av URL ${url}:`, error);
-                return null;
+            // Look up fagkode in embedded database
+            if (examDatabase[fagkode]) {
+                return examDatabase[fagkode];
             }
+            // If not found, return null
+            return null;
         }
 
         function generateTimeHelpContent(date, room, fagkoder, fagkodeInfo) {
