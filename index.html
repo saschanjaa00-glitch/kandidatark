@@ -512,7 +512,10 @@
         </div>
 
         <div id="timeHelpContainer" style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
-            <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Tid og hjelpemidler</h3>
+            <h3 style="color: #222; margin-bottom: 8px; font-size: 15px; font-weight: 600;">Tid og hjelpemidler</h3>
+            <p style="color: #666; margin-bottom: 12px; font-size: 12px; font-style: italic;">
+                (Bør sjekkes opp mot Udir: <a href="https://kandidat.udir.no/eksamensinfo/" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: none;">kandidat.udir.no/eksamensinfo/</a>)
+            </p>
             <div style="display: flex; flex-direction: column; gap: 15px;">
                 <button class="btn btn-kandidatark" id="generateTimeHelpBtn" disabled>Generer tid og hjelpemidler per rom</button>
             </div>
@@ -566,7 +569,7 @@
     <!-- JSZip for handling docx files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-    <script src="data/examDatabaseCompact.js"></script>
+    <script src="data/examDatabaseCompact.js?v=2"></script>
 
     <script>
         let currentData = null;
@@ -1964,10 +1967,15 @@
 
         function fetchExamInfo(fagkode) {
             const normalizedFagkode = String(fagkode || '').trim().toUpperCase();
-            const entry = examDatabaseCompact[normalizedFagkode];
+            const patternIndex = examDatabaseCompact[normalizedFagkode];
 
-            if (entry) {
-                const [del1Start, del1End, del2Start, del2End, hjelpemidlerRef] = entry;
+            if (patternIndex !== undefined) {
+                const pattern = examPatterns[patternIndex];
+                if (!pattern) {
+                    console.error(`Pattern ${patternIndex} not found for ${normalizedFagkode}`);
+                    return null;
+                }
+                const [del1Start, del1End, del2Start, del2End, hjelpemidlerRef] = pattern;
                 const hjelpemidler = typeof hjelpemidlerRef === 'number'
                     ? (examTextDictionary[hjelpemidlerRef] || '')
                     : (hjelpemidlerRef || '');
@@ -2064,54 +2072,21 @@
                         spacing: { after: 200 }
                     }));
                 } else {
-                    // Normal exam times
-                    children.push(new docx.Paragraph({
-                        children: [new docx.TextRun({
-                            text: 'Normale eksamenstider:',
-                            bold: true,
-                            size: 22,
-                            font: 'Calibri'
-                        })],
-                        spacing: { after: 100 }
-                    }));
+                    // Calculate extended time
+                    const formatTime = (minutes) => {
+                        const hrs = Math.floor(minutes / 60);
+                        const mins = minutes % 60;
+                        return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+                    };
 
-                    if (info.del1 && info.del2) {
-                        children.push(new docx.Paragraph({
-                            children: [new docx.TextRun({
-                                text: `Del 1: ${info.del1.start} - ${info.del1.end}`,
-                                size: 22,
-                                font: 'Calibri'
-                            })],
-                            spacing: { after: 50 }
-                        }));
-
-                        children.push(new docx.Paragraph({
-                            children: [new docx.TextRun({
-                                text: `Del 2: ${info.del2.start} - ${info.del2.end}`,
-                                size: 22,
-                                font: 'Calibri'
-                            })],
-                            spacing: { after: 200 }
-                        }));
-                    } else if (info.del1) {
-                        children.push(new docx.Paragraph({
-                            children: [new docx.TextRun({
-                                text: `${info.del1.start} - ${info.del1.end}`,
-                                size: 22,
-                                font: 'Calibri'
-                            })],
-                            spacing: { after: 200 }
-                        }));
-                    }
-
-                    // Extended time version
                     if (info.del1) {
                         const totalMinutes = info.del1.endMinutes - info.del1.startMinutes + (info.del2 ? info.del2.endMinutes - info.del2.startMinutes : 0);
                         const extraTotalMinutes = Math.round((totalMinutes / 300) * 60);
 
+                        // Title with extended time
                         children.push(new docx.Paragraph({
                             children: [new docx.TextRun({
-                                text: `Med utvidet tid (+${extraTotalMinutes} min):`,
+                                text: `Normale eksamenstider (utvidet tid +${extraTotalMinutes} min):`,
                                 bold: true,
                                 size: 22,
                                 font: 'Calibri'
@@ -2120,7 +2095,7 @@
                         }));
 
                         if (info.del2) {
-                            // Proportionally distribute extra time
+                            // Two-part exam with extended times in parentheses
                             const del1Minutes = info.del1.endMinutes - info.del1.startMinutes;
                             const del2Minutes = info.del2.endMinutes - info.del2.startMinutes;
                             const extraDel1Minutes = Math.round(extraTotalMinutes * (del1Minutes / totalMinutes));
@@ -2134,15 +2109,9 @@
                             const del2StartMin = del1EndMin;
                             const del2EndMin = del2StartMin + extendedDel2Minutes;
 
-                            const formatTime = (minutes) => {
-                                const hrs = Math.floor(minutes / 60);
-                                const mins = minutes % 60;
-                                return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-                            };
-
                             children.push(new docx.Paragraph({
                                 children: [new docx.TextRun({
-                                    text: `Del 1: ${formatTime(del1StartMin)} - ${formatTime(del1EndMin)}`,
+                                    text: `Del 1: ${info.del1.start} - ${info.del1.end} (${formatTime(del1StartMin)} - ${formatTime(del1EndMin)})`,
                                     size: 22,
                                     font: 'Calibri'
                                 })],
@@ -2151,23 +2120,18 @@
 
                             children.push(new docx.Paragraph({
                                 children: [new docx.TextRun({
-                                    text: `Del 2: ${formatTime(del2StartMin)} - ${formatTime(del2EndMin)}`,
+                                    text: `Del 2: ${info.del2.start} - ${info.del2.end} (${formatTime(del2StartMin)} - ${formatTime(del2EndMin)})`,
                                     size: 22,
                                     font: 'Calibri'
                                 })],
                                 spacing: { after: 200 }
                             }));
                         } else {
-                            // Single part, add proportional extra time based on total duration
+                            // Single part with extended time in parentheses
                             const extendedEndMin = info.del1.endMinutes + extraTotalMinutes;
-                            const formatTime = (minutes) => {
-                                const hrs = Math.floor(minutes / 60);
-                                const mins = minutes % 60;
-                                return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-                            };
                             children.push(new docx.Paragraph({
                                 children: [new docx.TextRun({
-                                    text: `${info.del1.start} - ${formatTime(extendedEndMin)}`,
+                                    text: `${info.del1.start} - ${info.del1.end} (${info.del1.start} - ${formatTime(extendedEndMin)})`,
                                     size: 22,
                                     font: 'Calibri'
                                 })],
