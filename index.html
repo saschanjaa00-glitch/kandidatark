@@ -1816,7 +1816,7 @@
 
                         // Add page break between pages (except after the last one)
                         if (!(dateIdx === sortedDates.length - 1 && roomIdx === sortedRooms.length - 1)) {
-                            allChildren.push(new Paragraph({
+                            allChildren.push(new docx.Paragraph({
                                 text: '',
                                 pageBreakBefore: true
                             }));
