@@ -917,12 +917,18 @@
                 let html = '';
                 let lastDate = null;
                 missingRooms.forEach(student => {
-                    // Add horizontal line between different dates
-                    if (lastDate !== null && lastDate !== student.date) {
-                        html += '<hr style="border: none; border-top: 1px solid #d39e00; margin: 8px 0;">';
+                    // Add date header and separator between different dates
+                    if (lastDate !== student.date) {
+                        // Add horizontal line before new date (except for first date)
+                        if (lastDate !== null) {
+                            html += '<hr style="border: none; border-top: 1px solid #d39e00; margin: 8px 0;">';
+                        }
+                        // Add date as header
+                        html += `<div style="font-weight: 600; color: #d39e00; margin-top: 4px; margin-bottom: 4px;">${student.date}</div>`;
+                        lastDate = student.date;
                     }
-                    lastDate = student.date;
-                    html += `<div><strong>${student.name}</strong> (${student.kandidatnummer}) - ${student.date}: ${student.fagkode}</div>`;
+                    // Add student info without date
+                    html += `<div style="margin-left: 8px;"><strong>${student.name}</strong> (${student.kandidatnummer}): ${student.fagkode}</div>`;
                 });
                 missingRoomsList.innerHTML = html;
                 missingRoomsWarning.style.display = 'block';
