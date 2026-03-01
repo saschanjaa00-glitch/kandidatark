@@ -655,6 +655,7 @@
         const overrideQRRequirement = document.getElementById('overrideQRRequirement');
         const twoPartExamsInfo = document.getElementById('twoPartExamsInfo');
         const twoPartExamsList = document.getElementById('twoPartExamsList');
+        const selectedFagkodes = new Set(); // Track which fagkodes are selected for QR generation
         const removeFileBtn = document.getElementById('removeFileBtn');
         const selectAllDatesBtn = document.getElementById('selectAllDatesBtn');
         const duplicatesWarning = document.getElementById('duplicatesWarning');
@@ -1753,11 +1754,43 @@
             if (twoPartExams.size > 0) {
                 generateQRBtn.disabled = false;
                 twoPartExamsInfo.style.display = 'block';
-                twoPartExamsList.innerHTML = Array.from(twoPartExams)
-                    .map(([fagkode, fagnavn]) => `<div style="margin-bottom: 4px;"><strong>${fagkode}</strong> - ${fagnavn}</div>`)
-                    .join('');
+                
+                // Clear previous selections and populate with checkboxes
+                selectedFagkodes.clear();
+                twoPartExamsList.innerHTML = '';
+                
+                Array.from(twoPartExams).forEach(([fagkode, fagnavn]) => {
+                    // Add to selected set by default
+                    selectedFagkodes.add(fagkode);
+                    
+                    // Create checkbox element
+                    const checkbox = document.createElement('label');
+                    checkbox.style.cssText = 'display: flex; align-items: center; cursor: pointer; margin-bottom: 6px;';
+                    
+                    const input = document.createElement('input');
+                    input.type = 'checkbox';
+                    input.checked = true;
+                    input.value = fagkode;
+                    input.style.cssText = 'margin-right: 8px; width: 16px; height: 16px;';
+                    input.addEventListener('change', (e) => {
+                        if (e.target.checked) {
+                            selectedFagkodes.add(fagkode);
+                        } else {
+                            selectedFagkodes.delete(fagkode);
+                        }
+                    });
+                    
+                    const label = document.createElement('span');
+                    label.innerHTML = `<strong>${fagkode}</strong> - ${fagnavn}`;
+                    label.style.fontSize = '12px';
+                    
+                    checkbox.appendChild(input);
+                    checkbox.appendChild(label);
+                    twoPartExamsList.appendChild(checkbox);
+                });
             } else {
                 twoPartExamsInfo.style.display = 'none';
+                selectedFagkodes.clear();
                 // Enable button only if override is checked
                 generateQRBtn.disabled = !overrideQRRequirement.checked;
             }
@@ -2105,8 +2138,8 @@
                         // Include all exams when override is enabled
                         twoPartStudents.push(student);
                     } else {
-                        // Check if exam has two parts
-                        if (examInfo && examInfo.del1 && examInfo.del2) {
+                        // Check if exam has two parts AND is selected
+                        if (examInfo && examInfo.del1 && examInfo.del2 && selectedFagkodes.has(fagkode)) {
                             twoPartStudents.push(student);
                         }
                     }
