@@ -504,7 +504,10 @@
                     
                     <!-- Info panel for 2-part exams -->
                     <div id="twoPartExamsInfo" style="background: #e8f4f8; border: 1px solid #b3d9e6; border-radius: 4px; padding: 12px; margin-bottom: 15px; display: none;">
-                        <p style="color: #0066cc; font-size: 13px; font-weight: 600; margin-bottom: 8px;">Todelte eksamener i valgte datoer:</p>
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                            <p style="color: #0066cc; font-size: 13px; font-weight: 600; margin: 0;">Todelte eksamener i valgte datoer:</p>
+                            <button id="toggleAllFagkodes" style="background: none; border: none; color: #0066cc; font-size: 12px; cursor: pointer; text-decoration: underline; padding: 0;">Velg alle / Fjern alle</button>
+                        </div>
                         <div id="twoPartExamsList" style="color: #333; font-size: 12px; line-height: 1.6;"></div>
                     </div>
 
@@ -1768,7 +1771,18 @@
                     return a.fagnavn.localeCompare(b.fagnavn);
                 });
                 
+                let lastDate = null;
+                const allCheckboxes = [];
+                
                 sortedExams.forEach(({ date, fagkode, fagnavn }) => {
+                    // Add horizontal line between different dates
+                    if (lastDate !== null && lastDate !== date) {
+                        const separator = document.createElement('hr');
+                        separator.style.cssText = 'border: none; border-top: 1px solid #b3d9e6; margin: 10px 0;';
+                        twoPartExamsList.appendChild(separator);
+                    }
+                    lastDate = date;
+                    
                     // Add to selected set by default
                     selectedFagkodes.add(fagkode);
                     
@@ -1780,6 +1794,7 @@
                     input.type = 'checkbox';
                     input.checked = true;
                     input.value = fagkode;
+                    input.className = 'fagkode-checkbox';
                     input.style.cssText = 'margin-right: 8px; width: 16px; height: 16px;';
                     input.addEventListener('change', (e) => {
                         if (e.target.checked) {
@@ -1789,6 +1804,8 @@
                         }
                     });
                     
+                    allCheckboxes.push(input);
+                    
                     const label = document.createElement('span');
                     label.innerHTML = `${date} - <strong>${fagkode}</strong> - ${fagnavn}`;
                     label.style.fontSize = '12px';
@@ -1797,6 +1814,21 @@
                     checkbox.appendChild(label);
                     twoPartExamsList.appendChild(checkbox);
                 });
+                
+                // Add toggle all functionality
+                const toggleBtn = document.getElementById('toggleAllFagkodes');
+                toggleBtn.onclick = () => {
+                    const allChecked = allCheckboxes.every(cb => cb.checked);
+                    allCheckboxes.forEach(cb => {
+                        cb.checked = !allChecked;
+                        const fagkode = cb.value;
+                        if (cb.checked) {
+                            selectedFagkodes.add(fagkode);
+                        } else {
+                            selectedFagkodes.delete(fagkode);
+                        }
+                    });
+                };
             } else {
                 twoPartExamsInfo.style.display = 'none';
                 selectedFagkodes.clear();
