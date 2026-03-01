@@ -713,6 +713,9 @@
                     fileStats.textContent = `${filteredData.length} studenter funnet`;
                     fileInfo.classList.add('visible');
                     
+                    // Check for duplicate kandidatnummer on same day
+                    checkDuplicateKandidates(filteredData);
+                    
                     // Extract and display unique dates
                     displayDateOptions(filteredData);
                     
@@ -728,6 +731,50 @@
             };
 
             reader.readAsArrayBuffer(file);
+        }
+
+        function checkDuplicateKandidates(data) {
+            const dayMap = {}; // { date: { kandidatnummer: [...students] } }
+            
+            data.forEach(student => {
+                const date = formatDate(student['Eksamensdato']);
+                const kandidatnummer = String(student['PAS kandidatnummer'] ?? '').trim();
+                
+                if (!kandidatnummer) return; // Skip if no kandidatnummer
+                
+                if (!dayMap[date]) {
+                    dayMap[date] = {};
+                }
+                if (!dayMap[date][kandidatnummer]) {
+                    dayMap[date][kandidatnummer] = [];
+                }
+                dayMap[date][kandidatnummer].push(student);
+            });
+            
+            // Find duplicates
+            const duplicates = [];
+            Object.keys(dayMap).forEach(date => {
+                Object.keys(dayMap[date]).forEach(kandidatnummer => {
+                    if (dayMap[date][kandidatnummer].length > 1) {
+                        duplicates.push({
+                            date,
+                            kandidatnummer,
+                            students: dayMap[date][kandidatnummer]
+                        });
+                    }
+                });
+            });
+            
+            // Show alert if duplicates found
+            if (duplicates.length > 0) {
+                let alertMessage = 'Advarsel: Samme kandidat (kandidatnummer) vises flere ganger på samme dag:\n\n';
+                duplicates.forEach(dup => {
+                    const name = `${dup.students[0]['Fornavn']} ${dup.students[0]['Etternavn']}`;
+                    const fagkoder = dup.students.map(s => String(s['Fagkode']).trim()).join(', ');
+                    alertMessage += `${name} (${dup.kandidatnummer}) - ${dup.date}:\n  Fagkoder: ${fagkoder}\n\n`;
+                });
+                alert(alertMessage);
+            }
         }
 
         function formatDate(dateValue) {
