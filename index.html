@@ -2182,12 +2182,17 @@
                     const fagkode = student['Fagkode'];
                     const examInfo = examDatabase[fagkode];
                     
+                    // Only include if fagkode is selected in the checkboxes
+                    if (!selectedFagkodes.has(fagkode)) {
+                        continue;
+                    }
+                    
                     if (useOverride) {
-                        // Include all exams when override is enabled
+                        // Include all selected exams when override is enabled
                         twoPartStudents.push(student);
                     } else {
-                        // Check if exam has two parts AND is selected
-                        if (examInfo && examInfo.del1 && examInfo.del2 && selectedFagkodes.has(fagkode)) {
+                        // Check if exam has two parts
+                        if (examInfo && examInfo.del1 && examInfo.del2) {
                             twoPartStudents.push(student);
                         }
                     }
