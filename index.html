@@ -1802,7 +1802,7 @@
                         const fagkodeInfo = {};
                         for (const fagkode of fagkoder) {
                             try {
-                                const info = await fetchExamInfo(fagkode);
+                                    const info = fetchExamInfo(fagkode);
                                 fagkodeInfo[fagkode] = info;
                             } catch (e) {
                                 console.error(`Feil ved henting av info for ${fagkode}:`, e);
@@ -1880,7 +1880,7 @@
             'SPR3031': { fagkode: 'SPR3031', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' }
         };
 
-        async function fetchExamInfo(fagkode) {
+        function fetchExamInfo(fagkode) {
             // Look up fagkode in embedded database
             if (examDatabase[fagkode]) {
                 return examDatabase[fagkode];
