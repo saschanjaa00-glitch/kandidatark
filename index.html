@@ -505,7 +505,7 @@
                     <!-- Info panel for 2-part exams -->
                     <div id="twoPartExamsInfo" style="background: #e8f4f8; border: 1px solid #b3d9e6; border-radius: 4px; padding: 12px; margin-bottom: 15px; display: none;">
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                            <p style="color: #0066cc; font-size: 13px; font-weight: 600; margin: 0;">Todelte eksamener i valgte datoer:</p>
+                            <p id="twoPartExamsTitle" style="color: #0066cc; font-size: 13px; font-weight: 600; margin: 0;">Todelte eksamener i valgte datoer:</p>
                             <button id="toggleAllFagkodes" style="background: none; border: none; color: #0066cc; font-size: 12px; cursor: pointer; text-decoration: underline; padding: 0;">Velg alle / Fjern alle</button>
                         </div>
                         <div id="twoPartExamsList" style="color: #333; font-size: 12px; line-height: 1.6;"></div>
@@ -1738,8 +1738,9 @@
                 return;
             }
 
-            // Find students with selected dates that have 2-part exams
-            const twoPartExams = new Map(); // date-fagkode -> {date, fagkode, fagnavn}
+            // Find exams in selected dates (two-part exams, or all if override is checked)
+            const allExams = new Map(); // date-fagkode -> {date, fagkode, fagnavn, isTwoPart}
+            const useOverride = overrideQRRequirement.checked;
             
             for (const student of currentData) {
                 const date = formatDate(student['Eksamensdato']);
@@ -1747,24 +1748,29 @@
                 
                 const fagkode = student['Fagkode'];
                 const examInfo = examDatabase[fagkode];
+                const isTwoPart = examInfo && examInfo.del1 && examInfo.del2;
                 
-                if (examInfo && examInfo.del1 && examInfo.del2) {
+                if (isTwoPart || useOverride) {
                     const key = `${date}-${fagkode}`;
-                    twoPartExams.set(key, { date, fagkode, fagnavn: student['Fagnavn'] });
+                    allExams.set(key, { date, fagkode, fagnavn: student['Fagnavn'], isTwoPart });
                 }
             }
 
-            // Enable/disable button based on 2-part exams or override
-            if (twoPartExams.size > 0) {
+            // Enable/disable button based on exams found or override
+            if (allExams.size > 0) {
                 generateQRBtn.disabled = false;
                 twoPartExamsInfo.style.display = 'block';
+                
+                // Update panel title based on override status
+                const titleElement = document.getElementById('twoPartExamsTitle');
+                titleElement.textContent = useOverride ? 'Eksamener i valgte datoer:' : 'Todelte eksamener i valgte datoer:';
                 
                 // Clear previous selections and populate with checkboxes
                 selectedFagkodes.clear();
                 twoPartExamsList.innerHTML = '';
                 
                 // Sort by date, then by fagnavn
-                const sortedExams = Array.from(twoPartExams.values()).sort((a, b) => {
+                const sortedExams = Array.from(allExams.values()).sort((a, b) => {
                     // First sort by date
                     if (a.date !== b.date) return a.date.localeCompare(b.date);
                     // Then sort by fagnavn
@@ -1774,7 +1780,7 @@
                 let lastDate = null;
                 const allCheckboxes = [];
                 
-                sortedExams.forEach(({ date, fagkode, fagnavn }) => {
+                sortedExams.forEach(({ date, fagkode, fagnavn, isTwoPart }) => {
                     // Add horizontal line between different dates
                     if (lastDate !== null && lastDate !== date) {
                         const separator = document.createElement('hr');
@@ -1807,7 +1813,8 @@
                     allCheckboxes.push(input);
                     
                     const label = document.createElement('span');
-                    label.innerHTML = `${date} - <strong>${fagkode}</strong> - ${fagnavn}`;
+                    const partIndicator = isTwoPart ? ' (todelt)' : '';
+                    label.innerHTML = `${date} - <strong>${fagkode}</strong> - ${fagnavn}${partIndicator}`;
                     label.style.fontSize = '12px';
                     
                     checkbox.appendChild(input);
@@ -2203,11 +2210,21 @@
 
                 const sortByDel = sortByDelRadio.checked;
 
-                // Create array of {student, part} pairs
+                // Create array of {student, part, isTwoPart} objects
                 let sheetData = [];
                 for (const student of twoPartStudents) {
-                    for (const part of parts) {
-                        sheetData.push({ student, part });
+                    const fagkode = student['Fagkode'];
+                    const examInfo = examDatabase[fagkode];
+                    const isTwoPart = examInfo && examInfo.del1 && examInfo.del2;
+                    
+                    if (isTwoPart) {
+                        // For two-part exams, create sheets for selected parts
+                        for (const part of parts) {
+                            sheetData.push({ student, part, isTwoPart: true });
+                        }
+                    } else {
+                        // For one-part exams, create only one sheet without part designation
+                        sheetData.push({ student, part: { name: '', suffix: '' }, isTwoPart: false });
                     }
                 }
 
@@ -2286,7 +2303,7 @@
 
                 // Generate QR code sheets
                 for (let i = 0; i < sheetData.length; i++) {
-                    const { student, part } = sheetData[i];
+                    const { student, part, isTwoPart } = sheetData[i];
                     const kandidatnummer = student['PAS kandidatnummer'];
                     
                     // Add page break before each sheet (except first)
@@ -2296,18 +2313,20 @@
                         }));
                     }
 
-                    // Part indicator at top - Size 40, Calibri Bold
-                    children.push(new Paragraph({
-                        children: [
-                            new TextRun({
-                                text: part.name,
-                                size: 80, // 40pt * 2
-                                bold: true,
-                                font: 'Calibri'
-                            })
-                        ],
-                        alignment: AlignmentType.CENTER
-                    }));
+                    // Part indicator at top - Size 40, Calibri Bold (only for two-part exams)
+                    if (isTwoPart && part.name) {
+                        children.push(new Paragraph({
+                            children: [
+                                new TextRun({
+                                    text: part.name,
+                                    size: 80, // 40pt * 2
+                                    bold: true,
+                                    font: 'Calibri'
+                                })
+                            ],
+                            alignment: AlignmentType.CENTER
+                        }));
+                    }
 
                     // 6 line breaks before QR code
                     for (let j = 0; j < 6; j++) {
@@ -2318,7 +2337,7 @@
                     }
 
                     // Generate QR code with correct format: eX{kandidatnummer}{suffix}
-                    const qrData = `eX${kandidatnummer}${part.suffix}`;
+                    const qrData = isTwoPart ? `eX${kandidatnummer}${part.suffix}` : `eX${kandidatnummer}`;
                     
                     // Create QR code using QRious with specified settings:
                     // - High error correction level (H)
