@@ -708,19 +708,37 @@
                         }
                     }
 
-                    currentData = filteredData;
+                    // Remove exact duplicate rows (all fields identical)
+                    const dedupedData = [];
+                    const seenRowKeys = new Set();
+
+                    filteredData.forEach(student => {
+                        const rowKey = JSON.stringify(student);
+                        if (!seenRowKeys.has(rowKey)) {
+                            seenRowKeys.add(rowKey);
+                            dedupedData.push(student);
+                        }
+                    });
+
+                    currentData = dedupedData;
                     fileName.textContent = file.name;
-                    fileStats.textContent = `${filteredData.length} studenter funnet`;
+                    fileStats.textContent = `${dedupedData.length} studenter funnet`;
                     fileInfo.classList.add('visible');
                     
                     // Extract and display unique dates
-                    displayDateOptions(filteredData);
+                    displayDateOptions(dedupedData);
                     
                     generateBtn.disabled = false;
                     generateTablesBtn.disabled = false;
                     generateTilretteTablesBtn.disabled = false;
                     generateTimeHelpBtn.disabled = false;
-                    showStatus('Fil lastet inn', 'success');
+
+                    const duplicateCount = filteredData.length - dedupedData.length;
+                    if (duplicateCount > 0) {
+                        showStatus(`Fil lastet inn (${duplicateCount} duplikat(er) fjernet)`, 'success');
+                    } else {
+                        showStatus('Fil lastet inn', 'success');
+                    }
 
                 } catch (error) {
                     showStatus('Feil ved lesing av Excel-fil: ' + error.message, 'error');
@@ -1816,37 +1834,28 @@
             showStatus('Genererer tid og hjelpemidler...', 'processing');
 
             try {
-                // Group students by room
-                const roomGroups = {};
-                currentData.forEach(student => {
-                    const room = String(student['Rom']).trim();
-                    if (!roomGroups[room]) {
-                        roomGroups[room] = [];
-                    }
-                    roomGroups[room].push(student);
-                });
-
                 // Build content for all pages
                 const allChildren = [];
                 const sortedDates = Array.from(selectedDates).sort();
-                const sortedRooms = Object.keys(roomGroups).sort();
+                let isFirstPage = true;
 
-                // For each selected date and room combination
-                for (let dateIdx = 0; dateIdx < sortedDates.length; dateIdx++) {
-                    const date = sortedDates[dateIdx];
-                    
-                    for (let roomIdx = 0; roomIdx < sortedRooms.length; roomIdx++) {
-                        const room = sortedRooms[roomIdx];
-                        const students = roomGroups[room];
-                        
-                        // Get unique fagkoder in this room
-                        const fagkoder = [...new Set(students.map(s => String(s['Fagkode']).trim()))];
-                        
-                        // Fetch exam info for each fagkode (only once per fagkode)
+                // For each selected date and room combination (only when that room has exams on that date)
+                for (const date of sortedDates) {
+                    const studentsOnDate = currentData.filter(student => formatDate(student['Eksamensdato']) === date);
+                    const roomsOnDate = [...new Set(studentsOnDate.map(student => String(student['Rom']).trim()))].sort();
+
+                    for (const room of roomsOnDate) {
+                        const studentsInRoomOnDate = studentsOnDate.filter(student => String(student['Rom']).trim() === room);
+                        const fagkoder = [...new Set(studentsInRoomOnDate.map(student => String(student['Fagkode']).trim()))];
+
+                        if (fagkoder.length === 0) {
+                            continue;
+                        }
+
                         const fagkodeInfo = {};
                         for (const fagkode of fagkoder) {
                             try {
-                                    const info = fetchExamInfo(fagkode);
+                                const info = fetchExamInfo(fagkode);
                                 fagkodeInfo[fagkode] = info;
                             } catch (e) {
                                 console.error(`Feil ved henting av info for ${fagkode}:`, e);
@@ -1854,17 +1863,16 @@
                             }
                         }
 
-                        // Generate content for this date/room
-                        const pageChildren = generateTimeHelpContent(date, room, fagkoder, fagkodeInfo);
-                        allChildren.push(...pageChildren);
-
-                        // Add page break between pages (except after the last one)
-                        if (!(dateIdx === sortedDates.length - 1 && roomIdx === sortedRooms.length - 1)) {
+                        if (!isFirstPage) {
                             allChildren.push(new docx.Paragraph({
                                 text: '',
                                 pageBreakBefore: true
                             }));
                         }
+
+                        const pageChildren = generateTimeHelpContent(date, room, fagkoder, fagkodeInfo);
+                        allChildren.push(...pageChildren);
+                        isFirstPage = false;
                     }
                 }
 
@@ -1925,12 +1933,27 @@
         };
 
         function fetchExamInfo(fagkode) {
+            const normalizedFagkode = String(fagkode || '').trim().toUpperCase();
+
             // Look up fagkode in embedded database
-            if (examDatabase[fagkode]) {
-                return examDatabase[fagkode];
+            if (examDatabase[normalizedFagkode]) {
+                return {
+                    ...examDatabase[normalizedFagkode],
+                    fagkode: normalizedFagkode,
+                    notInDatabase: false,
+                    sourceUrl: `https://kandidat.udir.no/eksamensinfo/${normalizedFagkode}`
+                };
             }
-            // If not found, return null
-            return null;
+
+            // Return structured fallback for unknown fagkode
+            return {
+                fagkode: normalizedFagkode || String(fagkode || '').trim(),
+                del1: null,
+                del2: null,
+                hjelpemidler: '',
+                notInDatabase: true,
+                sourceUrl: `https://kandidat.udir.no/eksamensinfo/${normalizedFagkode || String(fagkode || '').trim()}`
+            };
         }
 
         function generateTimeHelpContent(date, room, fagkoder, fagkodeInfo) {
@@ -1963,10 +1986,24 @@
                     spacing: { before: 200, after: 100 }
                 }));
 
-                if (!info) {
+                const hasTiming = info && (info.del1 || info.del2);
+                const hasHjelpemidler = info && info.hjelpemidler && String(info.hjelpemidler).trim() !== '';
+
+                if (!info || info.notInDatabase || (!hasTiming && !hasHjelpemidler)) {
                     children.push(new docx.Paragraph({
                         children: [new docx.TextRun({
-                            text: 'Kunne ikke hente informasjon fra Utdanningsdirektoratet',
+                            text: 'Fagkoden finnes ikke i den innebygde listen.',
+                            italics: true,
+                            size: 22,
+                            font: 'Calibri',
+                            color: '999999'
+                        })],
+                        spacing: { after: 50 }
+                    }));
+
+                    children.push(new docx.Paragraph({
+                        children: [new docx.TextRun({
+                            text: `Finn info her: ${(info && info.sourceUrl) ? info.sourceUrl : `https://kandidat.udir.no/eksamensinfo/${String(fagkode || '').trim().toUpperCase()}`}`,
                             italics: true,
                             size: 22,
                             font: 'Calibri',
@@ -2010,9 +2047,12 @@
 
                     // Extended time version
                     if (info.del1) {
+                        const totalMinutes = info.del1.endMinutes - info.del1.startMinutes + (info.del2 ? info.del2.endMinutes - info.del2.startMinutes : 0);
+                        const extraTotalMinutes = Math.round((totalMinutes / 300) * 60);
+
                         children.push(new docx.Paragraph({
                             children: [new docx.TextRun({
-                                text: 'Med utvidet tid (+1 time):',
+                                text: `Med utvidet tid (+${extraTotalMinutes} min):`,
                                 bold: true,
                                 size: 22,
                                 font: 'Calibri'
@@ -2020,18 +2060,15 @@
                             spacing: { after: 100 }
                         }));
 
-                        const totalMinutes = info.del1.endMinutes - info.del1.startMinutes + (info.del2 ? info.del2.endMinutes - info.del2.startMinutes : 0);
-                        const extendedTotalMinutes = totalMinutes + 60;
-
                         if (info.del2) {
-                            // Proportionally distribute extra hour
+                            // Proportionally distribute extra time
                             const del1Minutes = info.del1.endMinutes - info.del1.startMinutes;
                             const del2Minutes = info.del2.endMinutes - info.del2.startMinutes;
-                            const del1Proportion = del1Minutes / totalMinutes;
-                            const del2Proportion = del2Minutes / totalMinutes;
+                            const extraDel1Minutes = Math.round(extraTotalMinutes * (del1Minutes / totalMinutes));
+                            const extraDel2Minutes = extraTotalMinutes - extraDel1Minutes;
 
-                            const extendedDel1Minutes = Math.round(del1Minutes + (60 * del1Proportion));
-                            const extendedDel2Minutes = Math.round(del2Minutes + (60 * del2Proportion));
+                            const extendedDel1Minutes = del1Minutes + extraDel1Minutes;
+                            const extendedDel2Minutes = del2Minutes + extraDel2Minutes;
 
                             const del1StartMin = info.del1.startMinutes;
                             const del1EndMin = del1StartMin + extendedDel1Minutes;
@@ -2062,8 +2099,8 @@
                                 spacing: { after: 200 }
                             }));
                         } else {
-                            // Single part, just add 1 hour
-                            const extendedEndMin = info.del1.endMinutes + 60;
+                            // Single part, add proportional extra time based on total duration
+                            const extendedEndMin = info.del1.endMinutes + extraTotalMinutes;
                             const formatTime = (minutes) => {
                                 const hrs = Math.floor(minutes / 60);
                                 const mins = minutes % 60;
