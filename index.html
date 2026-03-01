@@ -1736,7 +1736,7 @@
             }
 
             // Find students with selected dates that have 2-part exams
-            const twoPartExams = new Map(); // fagkode -> fagnanvn
+            const twoPartExams = new Map(); // date-fagkode -> {date, fagkode, fagnavn}
             
             for (const student of currentData) {
                 const date = formatDate(student['Eksamensdato']);
@@ -1746,7 +1746,8 @@
                 const examInfo = examDatabase[fagkode];
                 
                 if (examInfo && examInfo.del1 && examInfo.del2) {
-                    twoPartExams.set(fagkode, student['Fagnavn']);
+                    const key = `${date}-${fagkode}`;
+                    twoPartExams.set(key, { date, fagkode, fagnavn: student['Fagnavn'] });
                 }
             }
 
@@ -1759,7 +1760,7 @@
                 selectedFagkodes.clear();
                 twoPartExamsList.innerHTML = '';
                 
-                Array.from(twoPartExams).forEach(([fagkode, fagnavn]) => {
+                Array.from(twoPartExams.values()).forEach(({ date, fagkode, fagnavn }) => {
                     // Add to selected set by default
                     selectedFagkodes.add(fagkode);
                     
@@ -1781,7 +1782,7 @@
                     });
                     
                     const label = document.createElement('span');
-                    label.innerHTML = `<strong>${fagkode}</strong> - ${fagnavn}`;
+                    label.innerHTML = `${date} - <strong>${fagkode}</strong> - ${fagnavn}`;
                     label.style.fontSize = '12px';
                     
                     checkbox.appendChild(input);
