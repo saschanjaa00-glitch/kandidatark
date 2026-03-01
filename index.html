@@ -512,12 +512,56 @@
         </div>
 
         <div id="timeHelpContainer" style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
-            <h3 style="color: #222; margin-bottom: 8px; font-size: 15px; font-weight: 600;">Tid og hjelpemidler</h3>
-            <p style="color: #666; margin-bottom: 12px; font-size: 12px; font-style: italic;">
-                (Bør sjekkes opp mot Udir: <a href="https://kandidat.udir.no/eksamensinfo/" target="_blank" rel="noopener noreferrer" style="color: #0066cc; text-decoration: none;">kandidat.udir.no/eksamensinfo/</a>)
-            </p>
+            <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Tid og hjelpemidler</h3>
             <div style="display: flex; flex-direction: column; gap: 15px;">
                 <button class="btn btn-kandidatark" id="generateTimeHelpBtn" disabled>Generer tid og hjelpemidler per rom</button>
+            </div>
+        </div>
+
+        <div id="qrCodeContainer" style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
+            <h3 style="color: #222; margin-bottom: 8px; font-size: 15px; font-weight: 600;">QR-koder for todelte eksamener</h3>
+            <p style="color: #666; margin-bottom: 12px; font-size: 12px;">
+                Genererer ark med QR-kode for eksamener med Del 1 og Del 2. All behandling skjer lokalt i nettleseren.
+            </p>
+            
+            <!-- Info panel for 2-part exams -->
+            <div id="twoPartExamsInfo" style="background: #e8f4f8; border: 1px solid #b3d9e6; border-radius: 4px; padding: 12px; margin-bottom: 15px; display: none;">
+                <p style="color: #0066cc; font-size: 13px; font-weight: 600; margin-bottom: 8px;">Todelte eksamener i valgte datoer:</p>
+                <div id="twoPartExamsList" style="color: #333; font-size: 12px; line-height: 1.6;"></div>
+            </div>
+
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <!-- Del selection -->
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <p style="color: #222; font-size: 13px; font-weight: 600;">Velg eksamensdelene:</p>
+                    <div style="display: flex; gap: 15px;">
+                        <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
+                            <input type="checkbox" id="includeDel1" checked style="margin-right: 6px; width: 16px; height: 16px;">
+                            Del 1
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
+                            <input type="checkbox" id="includeDel2" checked style="margin-right: 6px; width: 16px; height: 16px;">
+                            Del 2
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Sorting options -->
+                <div style="display: flex; flex-direction: column; gap: 8px;">
+                    <p style="color: #222; font-size: 13px; font-weight: 600;">Sortering:</p>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
+                            <input type="radio" name="qrSortOption" value="byDel" id="sortByDel" checked style="margin-right: 6px; width: 16px; height: 16px;">
+                            Sorter etter Del (alle Del 1, så alle Del 2)
+                        </label>
+                        <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
+                            <input type="radio" name="qrSortOption" value="byRomName" id="sortByRomName" style="margin-right: 6px; width: 16px; height: 16px;">
+                            Sorter etter Rom og navn (Del 1 og 2 sammen per student)
+                        </label>
+                    </div>
+                </div>
+
+                <button class="btn btn-kandidatark" id="generateQRBtn" disabled>Generer QR-ark for todelte eksamener</button>
             </div>
         </div>
 
@@ -538,8 +582,8 @@
             </ul>
             <p style="color: #555; font-size: 13px; margin-bottom: 10px; font-weight: 500;">Valgfrie:</p>
             <ul>
-                <li>Telefon (brukes i kandidatlister)</li>
-                <li>eksamenstilrettelegginger (brukes i tilretteleggingslister)</li>
+                <li>Telefon (brukes i romtabeller)</li>
+                <li>eksamenstilrettelegginger (brukes i tilretteleggingstabeller)</li>
             </ul>
         </div>
 
@@ -569,7 +613,8 @@
     <!-- JSZip for handling docx files -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 
-    <script src="data/examDatabaseCompact.js?v=2"></script>
+    <!-- QRious for generating QR codes client-side -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
 
     <script>
         let currentData = null;
@@ -592,6 +637,13 @@
         const generateTablesBtn = document.getElementById('generateTablesBtn');
         const generateTilretteTablesBtn = document.getElementById('generateTilretteTablesBtn');
         const generateTimeHelpBtn = document.getElementById('generateTimeHelpBtn');
+        const generateQRBtn = document.getElementById('generateQRBtn');
+        const includeDel1Checkbox = document.getElementById('includeDel1');
+        const includeDel2Checkbox = document.getElementById('includeDel2');
+        const sortByDelRadio = document.getElementById('sortByDel');
+        const sortByRomNameRadio = document.getElementById('sortByRomName');
+        const twoPartExamsInfo = document.getElementById('twoPartExamsInfo');
+        const twoPartExamsList = document.getElementById('twoPartExamsList');
         const removeFileBtn = document.getElementById('removeFileBtn');
         const selectAllDatesBtn = document.getElementById('selectAllDatesBtn');
         const duplicatesWarning = document.getElementById('duplicatesWarning');
@@ -686,6 +738,7 @@
         generateTablesBtn.addEventListener('click', generateRoomTables);
         generateTilretteTablesBtn.addEventListener('click', generateTilretteTables);
         generateTimeHelpBtn.addEventListener('click', generateTimeHelp);
+        generateQRBtn.addEventListener('click', generateQRCodeSheets);
 
         function handleFile(file) {
             if (!file.name.match(/\.(xlsx|xls)$/)) {
@@ -745,10 +798,14 @@
                     // Extract and display unique dates
                     displayDateOptions(filteredData);
                     
+                    // Update 2-part exams info panel
+                    updateTwoPartExamsInfo();
+                    
                     generateBtn.disabled = false;
                     generateTablesBtn.disabled = false;
                     generateTilretteTablesBtn.disabled = false;
                     generateTimeHelpBtn.disabled = false;
+                    generateQRBtn.disabled = false;
                     showStatus('Fil lastet inn', 'success');
 
                 } catch (error) {
@@ -940,6 +997,7 @@
                                 selectedDates.delete(dateStr);
                                 cell.style.background = '#f0f0f0';
                             }
+                            updateTwoPartExamsInfo();
                         });
 
                         const label = document.createElement('label');
@@ -1658,6 +1716,39 @@
             }
         }
 
+        function updateTwoPartExamsInfo() {
+            if (!currentData || selectedDates.size === 0) {
+                twoPartExamsInfo.style.display = 'none';
+                return;
+            }
+
+            // Find students with selected dates that have 2-part exams
+            const twoPartExams = new Map(); // fagkode -> fagnanvn
+            
+            for (const student of currentData) {
+                const date = formatDate(student['Eksamensdato']);
+                if (!selectedDates.has(date)) continue;
+                
+                const fagkode = student['Fagkode'];
+                const examInfo = examDatabase[fagkode];
+                
+                if (examInfo && examInfo.del1 && examInfo.del2) {
+                    twoPartExams.set(fagkode, student['Fagnavn']);
+                }
+            }
+
+            if (twoPartExams.size === 0) {
+                twoPartExamsInfo.style.display = 'none';
+                return;
+            }
+
+            // Display the info
+            twoPartExamsInfo.style.display = 'block';
+            twoPartExamsList.innerHTML = Array.from(twoPartExams)
+                .map(([fagkode, fagnavn]) => `<div style="margin-bottom: 4px;"><strong>${fagkode}</strong> - ${fagnavn}</div>`)
+                .join('');
+        }
+
         async function generateDocument() {
             if (!currentData) return;
 
@@ -1955,50 +2046,329 @@
             }
         }
 
-        // Embedded exam database - data fetched from udir.no
-        const examDatabaseCompact = window.examDatabaseCompact || {};
-        const examTextDictionary = window.examTextDictionary || [];
+        async function generateQRCodeSheets() {
+            if (!currentData || selectedDates.size === 0) {
+                showStatus('Vennligst last opp Excel-fil og velg datoer', 'error');
+                return;
+            }
 
-        function timeToMinutes(timeStr) {
-            if (!timeStr) return null;
-            const [hours, minutes] = timeStr.split(':').map(Number);
-            return (hours * 60) + minutes;
+            // Check which Del options are selected
+            if (!includeDel1Checkbox.checked && !includeDel2Checkbox.checked) {
+                showStatus('Vennligst velg minst Del 1 eller Del 2', 'error');
+                return;
+            }
+
+            generateQRBtn.disabled = true;
+            spinner.classList.add('visible');
+            showStatus('Genererer QR-ark...', 'processing');
+
+            try {
+                // Check if docx library is loaded
+                if (typeof docx === 'undefined') {
+                    throw new Error('Document library not loaded. Please refresh the page and try again.');
+                }
+
+                const { Document, Paragraph, TextRun, AlignmentType, PageBreak, ImageRun } = docx;
+
+                // Filter students with selected dates
+                const filteredData = currentData.filter(student => {
+                    const date = formatDate(student['Eksamensdato']);
+                    return selectedDates.has(date);
+                });
+
+                // Get students with two-part exams
+                const twoPartStudents = [];
+                
+                for (const student of filteredData) {
+                    const fagkode = student['Fagkode'];
+                    const examInfo = examDatabase[fagkode];
+                    
+                    // Check if exam has two parts
+                    if (examInfo && examInfo.del1 && examInfo.del2) {
+                        twoPartStudents.push(student);
+                    }
+                }
+
+                if (twoPartStudents.length === 0) {
+                    showStatus('Ingen todelte eksamener funnet i valgte data', 'error');
+                    generateQRBtn.disabled = false;
+                    spinner.classList.remove('visible');
+                    return;
+                }
+
+                // Build parts array based on selected options
+                const parts = [];
+                if (includeDel1Checkbox.checked) parts.push({ name: 'Del 1', suffix: '-01' });
+                if (includeDel2Checkbox.checked) parts.push({ name: 'Del 2', suffix: '-09' });
+
+                const sortByDel = sortByDelRadio.checked;
+
+                // Create array of {student, part} pairs
+                let sheetData = [];
+                for (const student of twoPartStudents) {
+                    for (const part of parts) {
+                        sheetData.push({ student, part });
+                    }
+                }
+
+                // Sort based on selected option
+                if (sortByDel) {
+                    // Sort by: Del -> Rom -> Name
+                    sheetData.sort((a, b) => {
+                        // First sort by Del (by index in parts array)
+                        const delA = a.part.suffix;
+                        const delB = b.part.suffix;
+                        if (delA !== delB) return delA.localeCompare(delB);
+                        
+                        // Then sort by Rom
+                        const roomA = String(a.student['Rom']).trim();
+                        const roomB = String(b.student['Rom']).trim();
+                        const roomCompare = roomA.localeCompare(roomB, undefined, { numeric: true });
+                        if (roomCompare !== 0) return roomCompare;
+                        
+                        // Then sort by Name
+                        if (sortPreference === 'fornavn') {
+                            const firstNameCompare = String(a.student['Fornavn']).trim().toLowerCase()
+                                .localeCompare(String(b.student['Fornavn']).trim().toLowerCase());
+                            if (firstNameCompare !== 0) return firstNameCompare;
+                            return String(a.student['Etternavn']).trim().toLowerCase()
+                                .localeCompare(String(b.student['Etternavn']).trim().toLowerCase());
+                        } else {
+                            const lastNameCompare = String(a.student['Etternavn']).trim().toLowerCase()
+                                .localeCompare(String(b.student['Etternavn']).trim().toLowerCase());
+                            if (lastNameCompare !== 0) return lastNameCompare;
+                            return String(a.student['Fornavn']).trim().toLowerCase()
+                                .localeCompare(String(b.student['Fornavn']).trim().toLowerCase());
+                        }
+                    });
+                } else {
+                    // Sort by: Rom -> Name -> Del
+                    sheetData.sort((a, b) => {
+                        // First sort by Rom
+                        const roomA = String(a.student['Rom']).trim();
+                        const roomB = String(b.student['Rom']).trim();
+                        const roomCompare = roomA.localeCompare(roomB, undefined, { numeric: true });
+                        if (roomCompare !== 0) return roomCompare;
+                        
+                        // Then sort by Name
+                        if (sortPreference === 'fornavn') {
+                            const firstNameCompare = String(a.student['Fornavn']).trim().toLowerCase()
+                                .localeCompare(String(b.student['Fornavn']).trim().toLowerCase());
+                            if (firstNameCompare !== 0) return firstNameCompare;
+                            const lastNameCompare = String(a.student['Etternavn']).trim().toLowerCase()
+                                .localeCompare(String(b.student['Etternavn']).trim().toLowerCase());
+                            if (lastNameCompare !== 0) return lastNameCompare;
+                        } else {
+                            const lastNameCompare = String(a.student['Etternavn']).trim().toLowerCase()
+                                .localeCompare(String(b.student['Etternavn']).trim().toLowerCase());
+                            if (lastNameCompare !== 0) return lastNameCompare;
+                            const firstNameCompare = String(a.student['Fornavn']).trim().toLowerCase()
+                                .localeCompare(String(b.student['Fornavn']).trim().toLowerCase());
+                            if (firstNameCompare !== 0) return firstNameCompare;
+                        }
+                        
+                        // Then sort by Del
+                        return a.part.suffix.localeCompare(b.part.suffix);
+                    });
+                }
+
+                const children = [];
+
+                // Generate QR code sheets
+                for (let i = 0; i < sheetData.length; i++) {
+                    const { student, part } = sheetData[i];
+                    const kandidatnummer = student['PAS kandidatnummer'];
+                    
+                    // Add page break before each sheet (except first)
+                    if (i > 0) {
+                        children.push(new Paragraph({
+                            children: [new PageBreak()]
+                        }));
+                    }
+
+                    // Part indicator at top - Size 40, Calibri Bold
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: part.name,
+                                size: 80, // 40pt * 2
+                                bold: true,
+                                font: 'Calibri'
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    }));
+
+                    // 6 line breaks before QR code
+                    for (let j = 0; j < 6; j++) {
+                        children.push(new Paragraph({ 
+                            text: '',
+                            spacing: { line: 280 }
+                        }));
+                    }
+
+                    // Generate QR code with correct format: eX{kandidatnummer}{suffix}
+                    const qrData = `eX${kandidatnummer}${part.suffix}`;
+                    
+                    // Create QR code using QRious with specified settings:
+                    // - High error correction level (H)
+                    // - 5 pixels per block (module)
+                    // - 2 module border
+                    const qr = new QRious({
+                        value: qrData,
+                        size: 135,  // 5 pixels per block × ~27 modules = 135 pixels
+                        level: 'H',  // High error correction
+                        padding: 2   // 2 module border
+                    });
+                    
+                    // Get the data URL and convert to buffer
+                    const qrDataUrl = qr.toDataURL();
+                    const qrImageData = qrDataUrl.split(',')[1]; // Remove data:image/png;base64, prefix
+                    const qrBuffer = Uint8Array.from(atob(qrImageData), c => c.charCodeAt(0));
+
+                    // Add QR code image centered
+                    children.push(new Paragraph({
+                        children: [
+                            new ImageRun({
+                                data: qrBuffer,
+                                transformation: {
+                                    width: 135,
+                                    height: 135
+                                }
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    }));
+
+                    // 6 line breaks after QR code
+                    for (let j = 0; j < 6; j++) {
+                        children.push(new Paragraph({ 
+                            text: '',
+                            spacing: { line: 280 }
+                        }));
+                    }
+
+                    // Student Name - Size 14, Calibri
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: getDisplayName(student),
+                                size: 28, // 14pt * 2
+                                font: 'Calibri'
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    }));
+
+                    // Line break
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 280 }
+                    }));
+
+                    // Kandidatnummer (just the number) - Size 14, Calibri
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: kandidatnummer,
+                                size: 28, // 14pt * 2
+                                font: 'Calibri'
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    }));
+
+                    // Line break
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 280 }
+                    }));
+
+                    // Room - Size 14, Calibri
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: `Rom: ${student['Rom']}`,
+                                size: 28, // 14pt * 2
+                                font: 'Calibri'
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    }));
+                }
+
+                const doc = new Document({
+                    sections: [{
+                        properties: {},
+                        children: children
+                    }]
+                });
+
+                const blob = await docx.Packer.toBlob(doc);
+                saveAs(blob, 'QR_ark_todelte_eksamener.docx');
+
+                const sortMethod = sortByDel ? 'etter Del' : 'etter Rom og navn';
+                showStatus(`QR-ark generert: ${sheetData.length} ark (sortert ${sortMethod})`, 'success');
+
+            } catch (error) {
+                showStatus('Feil ved generering av QR-ark: ' + error.message, 'error');
+                console.error(error);
+            } finally {
+                generateQRBtn.disabled = false;
+                spinner.classList.remove('visible');
+            }
         }
+
+        // Embedded exam database - data fetched from udir.no
+        const examDatabase = {
+            'FSP6152': { fagkode: 'FSP6152', del1: { start: '09:00', end: '13:00', startMinutes: 540, endMinutes: 780 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbaserte hjelpemidler.' },
+            'FSP6222': { fagkode: 'FSP6222', del1: { start: '09:00', end: '13:00', startMinutes: 540, endMinutes: 780 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbaserte hjelpemidler.' },
+            'FSP6242': { fagkode: 'FSP6242', del1: { start: '09:00', end: '13:00', startMinutes: 540, endMinutes: 780 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbaserte hjelpemidler.' },
+            'FSP6349': { fagkode: 'FSP6349', del1: { start: '09:00', end: '13:00', startMinutes: 540, endMinutes: 780 }, del2: null, hjelpemidler: 'Denne eksamenen har ikke innebygd stavekontroll i oppgaven. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'FSP6499': { fagkode: 'FSP6499', del1: { start: '09:00', end: '13:00', startMinutes: 540, endMinutes: 780 }, del2: null, hjelpemidler: 'Denne eksamenen har ikke innebygd stavekontroll i oppgaven. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'FSP6502': { fagkode: 'FSP6502', del1: { start: '09:00', end: '13:00', startMinutes: 540, endMinutes: 780 }, del2: null, hjelpemidler: 'Denne eksamenen har ikke innebygd stavekontroll i oppgaven. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'IDR2026': { fagkode: 'IDR2026', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen.' },
+            'IDR2027': { fagkode: 'IDR2027', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen.' },
+            'MAT1021': { fagkode: 'MAT1021', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'MAT1023': { fagkode: 'MAT1023', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'NOR1267': { fagkode: 'NOR1267', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'NOR1268': { fagkode: 'NOR1268', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt sidemål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'NOR1420': { fagkode: 'NOR1420', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
+            'PSP5800': { fagkode: 'PSP5800', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbaserte hjelpemidler.' },
+            'PSP5986': { fagkode: 'PSP5986', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbaserte hjelpemidler.' },
+            'PSP5992': { fagkode: 'PSP5992', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har ikke innebygd stavekontroll i oppgaven. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'PSP6010': { fagkode: 'PSP6010', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har ikke innebygd stavekontroll i oppgaven. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'REA3036': { fagkode: 'REA3036', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3039': { fagkode: 'REA3039', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3043': { fagkode: 'REA3043', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbasierte hjelpemidler.' },
+            'REA3046': { fagkode: 'REA3046', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3056': { fagkode: 'REA3056', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3058': { fagkode: 'REA3058', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3060': { fagkode: 'REA3060', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3062': { fagkode: 'REA3062', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'SAM3046': { fagkode: 'SAM3046', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
+            'SAM3051': { fagkode: 'SAM3051', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
+            'SAM3058': { fagkode: 'SAM3058', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
+            'SAM3061': { fagkode: 'SAM3061', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'SAM3073': { fagkode: 'SAM3073', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
+            'SPR3029': { fagkode: 'SPR3029', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
+            'SPR3031': { fagkode: 'SPR3031', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' }
+        };
 
         function fetchExamInfo(fagkode) {
             const normalizedFagkode = String(fagkode || '').trim().toUpperCase();
-            const patternIndex = examDatabaseCompact[normalizedFagkode];
 
-            if (patternIndex !== undefined) {
-                const pattern = examPatterns[patternIndex];
-                if (!pattern) {
-                    console.error(`Pattern ${patternIndex} not found for ${normalizedFagkode}`);
-                    return null;
-                }
-                const [del1Start, del1End, del2Start, del2End, hjelpemidlerRef] = pattern;
-                const hjelpemidler = typeof hjelpemidlerRef === 'number'
-                    ? (examTextDictionary[hjelpemidlerRef] || '')
-                    : (hjelpemidlerRef || '');
+            // Look up fagkode in embedded database
+            if (examDatabase[normalizedFagkode]) {
                 return {
+                    ...examDatabase[normalizedFagkode],
                     fagkode: normalizedFagkode,
-                    del1: del1Start && del1End ? {
-                        start: del1Start,
-                        end: del1End,
-                        startMinutes: timeToMinutes(del1Start),
-                        endMinutes: timeToMinutes(del1End)
-                    } : null,
-                    del2: del2Start && del2End ? {
-                        start: del2Start,
-                        end: del2End,
-                        startMinutes: timeToMinutes(del2Start),
-                        endMinutes: timeToMinutes(del2End)
-                    } : null,
-                    hjelpemidler: hjelpemidler || '',
                     notInDatabase: false,
                     sourceUrl: `https://kandidat.udir.no/eksamensinfo/${normalizedFagkode}`
                 };
             }
 
+            // Return structured fallback for unknown fagkode
             return {
                 fagkode: normalizedFagkode || String(fagkode || '').trim(),
                 del1: null,
@@ -2008,25 +2378,18 @@
                 sourceUrl: `https://kandidat.udir.no/eksamensinfo/${normalizedFagkode || String(fagkode || '').trim()}`
             };
         }
+
         function generateTimeHelpContent(date, room, fagkoder, fagkodeInfo) {
             const children = [];
 
             // Title with date and room
             children.push(new docx.Paragraph({
-                children: [
-                    new docx.TextRun({
-                        text: 'Tillatte hjelpemidler',
-                        bold: true,
-                        size: 32,
-                        font: 'Calibri'
-                    }),
-                    new docx.TextRun({
-                        text: ` (Rom ${room} - ${date})`,
-                        bold: false,
-                        size: 32,
-                        font: 'Calibri'
-                    })
-                ],
+                children: [new docx.TextRun({
+                    text: `Tid og hjelpemidler - ${date} - Rom ${room}`,
+                    bold: true,
+                    size: 32,
+                    font: 'Calibri'
+                })],
                 alignment: docx.AlignmentType.CENTER,
                 spacing: { after: 400 }
             }));
@@ -2072,21 +2435,47 @@
                         spacing: { after: 200 }
                     }));
                 } else {
-                    // Calculate extended time
-                    const formatTime = (minutes) => {
-                        const hrs = Math.floor(minutes / 60);
-                        const mins = minutes % 60;
-                        return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
-                    };
+                    // Normal exam times
+                    children.push(new docx.Paragraph({
+                        children: [new docx.TextRun({
+                            text: 'Normale eksamenstider:',
+                            bold: true,
+                            size: 22,
+                            font: 'Calibri'
+                        })],
+                        spacing: { after: 100 }
+                    }));
 
+                    if (info.del1) {
+                        children.push(new docx.Paragraph({
+                            children: [new docx.TextRun({
+                                text: `Del 1: ${info.del1.start} - ${info.del1.end}`,
+                                size: 22,
+                                font: 'Calibri'
+                            })],
+                            spacing: { after: 50 }
+                        }));
+                    }
+
+                    if (info.del2) {
+                        children.push(new docx.Paragraph({
+                            children: [new docx.TextRun({
+                                text: `Del 2: ${info.del2.start} - ${info.del2.end}`,
+                                size: 22,
+                                font: 'Calibri'
+                            })],
+                            spacing: { after: 200 }
+                        }));
+                    }
+
+                    // Extended time version
                     if (info.del1) {
                         const totalMinutes = info.del1.endMinutes - info.del1.startMinutes + (info.del2 ? info.del2.endMinutes - info.del2.startMinutes : 0);
                         const extraTotalMinutes = Math.round((totalMinutes / 300) * 60);
 
-                        // Title with extended time
                         children.push(new docx.Paragraph({
                             children: [new docx.TextRun({
-                                text: `Normale eksamenstider (utvidet tid +${extraTotalMinutes} min):`,
+                                text: `Med utvidet tid (+${extraTotalMinutes} min):`,
                                 bold: true,
                                 size: 22,
                                 font: 'Calibri'
@@ -2095,7 +2484,7 @@
                         }));
 
                         if (info.del2) {
-                            // Two-part exam with extended times in parentheses
+                            // Proportionally distribute extra time
                             const del1Minutes = info.del1.endMinutes - info.del1.startMinutes;
                             const del2Minutes = info.del2.endMinutes - info.del2.startMinutes;
                             const extraDel1Minutes = Math.round(extraTotalMinutes * (del1Minutes / totalMinutes));
@@ -2109,9 +2498,15 @@
                             const del2StartMin = del1EndMin;
                             const del2EndMin = del2StartMin + extendedDel2Minutes;
 
+                            const formatTime = (minutes) => {
+                                const hrs = Math.floor(minutes / 60);
+                                const mins = minutes % 60;
+                                return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+                            };
+
                             children.push(new docx.Paragraph({
                                 children: [new docx.TextRun({
-                                    text: `Del 1: ${info.del1.start} - ${info.del1.end} (${formatTime(del1StartMin)} - ${formatTime(del1EndMin)})`,
+                                    text: `Del 1: ${formatTime(del1StartMin)} - ${formatTime(del1EndMin)}`,
                                     size: 22,
                                     font: 'Calibri'
                                 })],
@@ -2120,18 +2515,23 @@
 
                             children.push(new docx.Paragraph({
                                 children: [new docx.TextRun({
-                                    text: `Del 2: ${info.del2.start} - ${info.del2.end} (${formatTime(del2StartMin)} - ${formatTime(del2EndMin)})`,
+                                    text: `Del 2: ${formatTime(del2StartMin)} - ${formatTime(del2EndMin)}`,
                                     size: 22,
                                     font: 'Calibri'
                                 })],
                                 spacing: { after: 200 }
                             }));
                         } else {
-                            // Single part with extended time in parentheses
+                            // Single part, add proportional extra time based on total duration
                             const extendedEndMin = info.del1.endMinutes + extraTotalMinutes;
+                            const formatTime = (minutes) => {
+                                const hrs = Math.floor(minutes / 60);
+                                const mins = minutes % 60;
+                                return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+                            };
                             children.push(new docx.Paragraph({
                                 children: [new docx.TextRun({
-                                    text: `${info.del1.start} - ${info.del1.end} (${info.del1.start} - ${formatTime(extendedEndMin)})`,
+                                    text: `${info.del1.start} - ${formatTime(extendedEndMin)}`,
                                     size: 22,
                                     font: 'Calibri'
                                 })],
@@ -2152,93 +2552,20 @@
                             spacing: { after: 100 }
                         }));
 
-                        // Clean and format hjelpemidler text with readable line breaks
-                        let hjelpemidlerText = info.hjelpemidler
-                            .replace(/<[^>]*>/g, '')
-                            .replace(/\s+/g, ' ')
+                        // Clean and format hjelpemidler text
+                        const hjelpemidlerText = info.hjelpemidler
+                            .replace(/<[^>]*>/g, '') // Remove HTML tags
+                            .replace(/\s+/g, ' ') // Normalize whitespace
                             .trim();
 
-                        // For two-part exams, inject time stamps into the text
-                        if (info.del1 && info.del2 && hjelpemidlerText.includes('Del 1') && hjelpemidlerText.includes('Del 2')) {
-                            hjelpemidlerText = hjelpemidlerText
-                                .replace('Del 1 gjennomfører du på papir', `Del 1 (${info.del1.start} - ${info.del1.end}) gjennomfører du på papir`)
-                                .replace('Del 2 kan du gjennomføre digitalt', `Del 2 (${info.del2.start} - ${info.del2.end}) kan du gjennomføre digitalt`);
-                        }
-
-                        const unntakPrefix = 'Alle hjelpemidler er lov på eksamen, med følgende unntak:';
-                        const unntakIndex = hjelpemidlerText.indexOf(unntakPrefix);
-
-                        if (unntakIndex !== -1) {
-                            const beforeUnntak = hjelpemidlerText.substring(0, unntakIndex).trim();
-                            const unntakText = hjelpemidlerText.substring(unntakIndex + unntakPrefix.length).trim();
-
-                            if (beforeUnntak) {
-                                const introParts = beforeUnntak
-                                    .split(/\.\s+/)
-                                    .map(part => part.trim())
-                                    .filter(part => part.length > 0)
-                                    .map(part => part.endsWith('.') ? part : `${part}.`);
-
-                                introParts.forEach(part => {
-                                    children.push(new docx.Paragraph({
-                                        children: [new docx.TextRun({
-                                            text: part,
-                                            size: 22,
-                                            font: 'Calibri'
-                                        })],
-                                        spacing: { after: 120 }
-                                    }));
-                                });
-                            }
-
-                            children.push(new docx.Paragraph({
-                                children: [new docx.TextRun({
-                                    text: unntakPrefix,
-                                    size: 22,
-                                    font: 'Calibri'
-                                })],
-                                spacing: { before: 120, after: 80 }
-                            }));
-
-                            const unntakParts = unntakText
-                                .split(/\.\s+/)
-                                .map(part => part.trim())
-                                .filter(part => part.length > 0)
-                                .map(part => part.endsWith('.') ? part : `${part}.`);
-
-                            unntakParts.forEach(part => {
-                                children.push(new docx.Paragraph({
-                                    children: [new docx.TextRun({
-                                        text: `- ${part}`,
-                                        size: 22,
-                                        font: 'Calibri'
-                                    })],
-                                    spacing: { after: 60 }
-                                }));
-                            });
-
-                            children.push(new docx.Paragraph({
-                                text: '',
-                                spacing: { after: 200 }
-                            }));
-                        } else {
-                            const paragraphParts = hjelpemidlerText
-                                .split(/\.\s+/)
-                                .map(part => part.trim())
-                                .filter(part => part.length > 0)
-                                .map(part => part.endsWith('.') ? part : `${part}.`);
-
-                            paragraphParts.forEach((part, index) => {
-                                children.push(new docx.Paragraph({
-                                    children: [new docx.TextRun({
-                                        text: part,
-                                        size: 22,
-                                        font: 'Calibri'
-                                    })],
-                                    spacing: { after: index === paragraphParts.length - 1 ? 300 : 120 }
-                                }));
-                            });
-                        }
+                        children.push(new docx.Paragraph({
+                            children: [new docx.TextRun({
+                                text: hjelpemidlerText,
+                                size: 22,
+                                font: 'Calibri'
+                            })],
+                            spacing: { after: 300 }
+                        }));
                     }
                 }
             });
