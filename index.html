@@ -896,11 +896,20 @@
                 const room = String(student['Rom'] || '').trim();
                 if (!room || room === '' || room === 'undefined' || room === 'null') {
                     const name = `${student['Fornavn']} ${student['Etternavn']}`;
+                    const firstName = String(student['Fornavn']).trim();
                     const date = formatDate(student['Eksamensdato']);
                     const fagkode = String(student['Fagkode']).trim();
                     const kandidatnummer = student['PAS kandidatnummer'];
-                    missingRooms.push({ name, kandidatnummer, date, fagkode });
+                    missingRooms.push({ name, firstName, kandidatnummer, date, fagkode });
                 }
+            });
+            
+            // Sort by date, then by first name
+            missingRooms.sort((a, b) => {
+                // First sort by date
+                if (a.date !== b.date) return a.date.localeCompare(b.date);
+                // Then sort by first name
+                return a.firstName.localeCompare(b.firstName);
             });
             
             // Display warning if students without rooms found
