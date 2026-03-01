@@ -1,0 +1,1070 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Exam Cards Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Aptos', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            font-family: 'Aptos', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            padding: 40px 20px;
+        }
+
+        .container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            max-width: 700px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            color: #222;
+            margin-bottom: 8px;
+            font-size: 24px;
+            font-weight: 600;
+        }
+
+        .subtitle {
+            color: #666;
+            margin-bottom: 30px;
+            font-size: 14px;
+        }
+
+        .upload-area {
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            padding: 30px;
+            text-align: center;
+            background: #fafafa;
+            cursor: pointer;
+            margin-bottom: 20px;
+            transition: border-color 0.2s;
+        }
+
+        .upload-area:hover {
+            border-color: #999;
+        }
+
+        .upload-area.dragover {
+            border-color: #666;
+            background: #f0f0f0;
+        }
+
+        .upload-icon {
+            font-size: 40px;
+            margin-bottom: 10px;
+        }
+
+        .upload-text {
+            color: #333;
+            font-size: 15px;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .upload-hint {
+            color: #888;
+            font-size: 13px;
+        }
+
+        #fileInput {
+            display: none;
+        }
+
+        .file-info {
+            background: #f9f9f9;
+            padding: 12px 15px;
+            border-radius: 6px;
+            margin-bottom: 20px;
+            display: none;
+            border: 1px solid #e0e0e0;
+        }
+
+        .file-info.visible {
+            display: block;
+        }
+
+        .file-name {
+            font-weight: 500;
+            color: #222;
+            margin-bottom: 4px;
+            font-size: 14px;
+        }
+
+        .file-stats {
+            color: #666;
+            font-size: 13px;
+        }
+
+        .btn {
+            background: #333;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 15px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            transition: background 0.2s;
+            display: none;
+        }
+
+        .btn.visible {
+            display: block;
+        }
+
+        .btn:hover {
+            background: #000;
+        }
+
+        .btn:active {
+            transform: translateY(1px);
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .btn-group .btn {
+            flex: 1;
+            margin-bottom: 0;
+        }
+
+        @media print {
+            body {
+                background: white;
+                padding: 0;
+            }
+            
+            .container {
+                max-width: 100%;
+                padding: 0;
+                box-shadow: none;
+            }
+
+            .room-table {
+                page-break-after: always;
+                margin-bottom: 40px;
+                padding: 20px;
+            }
+
+            .print-controls {
+                display: none !important;
+            }
+
+            .room-header {
+                text-align: center;
+                margin-bottom: 20px;
+                border-bottom: 2px solid #000;
+                padding-bottom: 10px;
+            }
+
+            table {
+                width: 100%;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
+
+            th, td {
+                border: 1px solid #000;
+                padding: 8px;
+                text-align: left;
+            }
+
+            th {
+                background: #f5f5f5;
+                font-weight: bold;
+            }
+
+            tr td {
+                height: 50px;
+                vertical-align: top;
+            }
+        }
+
+        .room-table {
+            page-break-after: always;
+            margin-bottom: 40px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            break-inside: avoid;
+        }
+
+        .room-header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #333;
+            padding-bottom: 10px;
+            font-weight: bold;
+            font-size: 16px;
+        }
+
+        .room-header-date {
+            font-size: 14px;
+            color: #555;
+        }
+
+        .room-header-number {
+            font-size: 18px;
+            color: #333;
+        }
+
+        .print-controls {
+            text-align: center;
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f9f9f9;
+            border-radius: 6px;
+        }
+
+        .print-btn {
+            background: #666;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+
+        .print-btn:hover {
+            background: #333;
+        }
+
+        .status {
+            margin-top: 15px;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            display: none;
+            font-size: 14px;
+        }
+
+        .status.visible {
+            display: block;
+        }
+
+        .status.success {
+            background: #e8f5e9;
+            color: #2e7d32;
+            border: 1px solid #c8e6c9;
+        }
+
+        .status.error {
+            background: #ffebee;
+            color: #c62828;
+            border: 1px solid #ffcdd2;
+        }
+
+        .status.processing {
+            background: #fff8e1;
+            color: #f57c00;
+            border: 1px solid #ffecb3;
+        }
+
+        .spinner {
+            border: 3px solid #f0f0f0;
+            border-top: 3px solid #333;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            margin: 15px auto;
+            display: none;
+        }
+
+        .spinner.visible {
+            display: block;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .required-columns {
+            background: #f9f9f9;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 30px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .required-columns h3 {
+            color: #222;
+            font-size: 15px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .required-columns ul {
+            list-style: none;
+            padding-left: 0;
+        }
+
+        .required-columns li {
+            color: #555;
+            padding: 6px 0;
+            padding-left: 20px;
+            position: relative;
+            font-size: 13px;
+        }
+
+        .required-columns li:before {
+            content: "•";
+            position: absolute;
+            left: 0;
+            color: #333;
+        }
+
+        .date-checkbox {
+            display: flex;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+
+        .date-checkbox:last-child {
+            border-bottom: none;
+        }
+
+        .date-checkbox input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            margin-right: 10px;
+            cursor: pointer;
+        }
+
+        .date-checkbox label {
+            cursor: pointer;
+            flex: 1;
+            color: #222;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Student Exam Cards</h1>
+        <p class="subtitle">Generate individual A4 cards from Excel file</p>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">�</div>
+            <div class="upload-text">Click to select or drag Excel file here</div>
+            <div class="upload-hint">Supports .xlsx and .xls files</div>
+        </div>
+
+        <input type="file" id="fileInput" accept=".xlsx,.xls">
+
+        <div class="file-info" id="fileInfo">
+            <div class="file-name" id="fileName"></div>
+            <div class="file-stats" id="fileStats"></div>
+        </div>
+
+        <div id="datesContainer" style="display: none; margin-bottom: 20px;">
+            <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Select Exam Dates:</h3>
+            <div id="datesList" style="background: #f9f9f9; padding: 12px 15px; border-radius: 6px; border: 1px solid #e0e0e0;"></div>
+        </div>
+
+        <div style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
+            <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Sort and Display:</h3>
+            <div style="display: flex; flex-direction: column; gap: 10px;">
+                <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 14px;">
+                    <input type="radio" name="sortBy" value="fornavn" id="sortFornavn" checked style="margin-right: 8px; width: 16px; height: 16px;">
+                    Sort by First Name (Display: Fornavn Etternavn)
+                </label>
+                <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 14px;">
+                    <input type="radio" name="sortBy" value="etternavn" id="sortEtternavn" style="margin-right: 8px; width: 16px; height: 16px;">
+                    Sort by Last Name (Display: Etternavn, Fornavn)
+                </label>
+            </div>
+        </div>
+
+        <button class="btn" id="generateBtn">Generate Word Document</button>
+
+        <button class="btn" id="generateTablesBtn">Generate Room Tables</button>
+
+        <div class="spinner" id="spinner"></div>
+        <div class="status" id="status"></div>
+
+        <div class="required-columns">
+            <h3>Required Excel Columns:</h3>
+            <ul>
+                <li>Rom</li>
+                <li>Fagkode</li>
+                <li>Fagnavn</li>
+                <li>Fornavn</li>
+                <li>Etternavn</li>
+                <li>Eksamensdato</li>
+                <li>PAS kandidatnummer</li>
+            </ul>
+        </div>
+    </div>
+
+    <!-- SheetJS library for reading Excel -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    
+    <!-- docx library for creating Word documents -->
+    <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
+
+    <!-- FileSaver for downloading files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+    <!-- JSZip for handling docx files -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+
+    <script>
+        let currentData = null;
+        let selectedDates = new Set();
+        let sortPreference = 'fornavn'; // Default
+        
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const fileInfo = document.getElementById('fileInfo');
+        const fileName = document.getElementById('fileName');
+        const fileStats = document.getElementById('fileStats');
+        const generateBtn = document.getElementById('generateBtn');
+        const status = document.getElementById('status');
+        const spinner = document.getElementById('spinner');
+        const datesContainer = document.getElementById('datesContainer');
+        const datesList = document.getElementById('datesList');
+        const sortFornavnRadio = document.getElementById('sortFornavn');
+        const sortEtternavnRadio = document.getElementById('sortEtternavn');
+
+        // Track sort preference changes
+        sortFornavnRadio.addEventListener('change', () => {
+            if (sortFornavnRadio.checked) sortPreference = 'fornavn';
+        });
+        sortEtternavnRadio.addEventListener('change', () => {
+            if (sortEtternavnRadio.checked) sortPreference = 'etternavn';
+        });
+
+        // Click to upload
+        uploadArea.addEventListener('click', () => fileInput.click());
+
+        // Drag and drop
+        uploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        });
+
+        uploadArea.addEventListener('dragleave', () => {
+            uploadArea.classList.remove('dragover');
+        });
+
+        uploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+
+        // File input change
+        fileInput.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (file) handleFile(file);
+        });
+
+        // Generate button
+        generateBtn.addEventListener('click', generateDocument);
+        document.getElementById('generateTablesBtn').addEventListener('click', generateRoomTables);
+
+        function handleFile(file) {
+            if (!file.name.match(/\.(xlsx|xls)$/)) {
+                showStatus('Please select an Excel file (.xlsx or .xls)', 'error');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet);
+
+                    if (jsonData.length === 0) {
+                        showStatus('Excel file is empty', 'error');
+                        return;
+                    }
+
+                    // Check for required columns
+                    const requiredColumns = [
+                        'Rom', 'Fagkode', 'Fagnavn', 'Fornavn',
+                        'Etternavn', 'Eksamensdato', 'PAS kandidatnummer'
+                    ];
+
+                    const firstRow = jsonData[0];
+                    const missingColumns = requiredColumns.filter(col => !(col in firstRow));
+
+                    if (missingColumns.length > 0) {
+                        showStatus(`Missing columns: ${missingColumns.join(', ')}`, 'error');
+                        return;
+                    }
+
+                    currentData = jsonData;
+                    fileName.textContent = file.name;
+                    fileStats.textContent = `${jsonData.length} students found`;
+                    fileInfo.classList.add('visible');
+                    
+                    // Extract and display unique dates
+                    displayDateOptions(jsonData);
+                    
+                    generateBtn.classList.add('visible');
+                    document.getElementById('generateTablesBtn').classList.add('visible');
+                    showStatus('File loaded successfully', 'success');
+
+                } catch (error) {
+                    showStatus('Error reading Excel file: ' + error.message, 'error');
+                }
+            };
+
+            reader.readAsArrayBuffer(file);
+        }
+
+        function formatDate(dateValue) {
+            if (!dateValue) return '';
+            
+            // If it's already a string, return it
+            if (typeof dateValue === 'string') {
+                return dateValue;
+            }
+
+            // If it's an Excel date number
+            if (typeof dateValue === 'number') {
+                const date = XLSX.SSF.parse_date_code(dateValue);
+                return `${String(date.d).padStart(2, '0')}.${String(date.m).padStart(2, '0')}.${date.y}`;
+            }
+
+            return String(dateValue);
+        }
+
+        function displayDateOptions(data) {
+            // Extract unique dates
+            const datesSet = new Set();
+            data.forEach(student => {
+                const date = formatDate(student['Eksamensdato']);
+                if (date) datesSet.add(date);
+            });
+
+            const uniqueDates = Array.from(datesSet).sort();
+            selectedDates = new Set(uniqueDates); // Default: all selected
+
+            // Clear and populate the dates list
+            datesList.innerHTML = '';
+            uniqueDates.forEach(date => {
+                const checkboxDiv = document.createElement('div');
+                checkboxDiv.className = 'date-checkbox';
+                
+                const checkbox = document.createElement('input');
+                checkbox.type = 'checkbox';
+                checkbox.id = `date-${date}`;
+                checkbox.value = date;
+                checkbox.checked = true;
+                checkbox.addEventListener('change', (e) => {
+                    if (e.target.checked) {
+                        selectedDates.add(date);
+                    } else {
+                        selectedDates.delete(date);
+                    }
+                });
+
+                const label = document.createElement('label');
+                label.htmlFor = `date-${date}`;
+                label.textContent = date;
+
+                checkboxDiv.appendChild(checkbox);
+                checkboxDiv.appendChild(label);
+                datesList.appendChild(checkboxDiv);
+            });
+
+            datesContainer.style.display = 'block';
+        }
+
+        function getDisplayName(student) {
+            const fornavn = student['Fornavn'];
+            const etternavn = student['Etternavn'];
+            
+            if (sortPreference === 'fornavn') {
+                return `${fornavn} ${etternavn}`;
+            } else {
+                return `${etternavn}, ${fornavn}`;
+            }
+        }
+
+        async function generateRoomTables() {
+            if (!currentData) return;
+
+            if (selectedDates.size === 0) {
+                showStatus('Please select at least one date to export', 'error');
+                return;
+            }
+
+            generateBtn.disabled = true;
+            document.getElementById('generateTablesBtn').disabled = true;
+            spinner.classList.add('visible');
+            showStatus('Generating room tables...', 'processing');
+
+            try {
+                const { Document, Paragraph, Table, TableCell, TableRow, TextRun, AlignmentType, VerticalAlign, PageBreak, convertInchesToTwip } = docx;
+
+                // Filter and group by room
+                const filteredData = currentData.filter(student => {
+                    const date = formatDate(student['Eksamensdato']);
+                    return selectedDates.has(date);
+                });
+
+                // Group by room
+                const roomGroups = {};
+                filteredData.forEach(student => {
+                    const room = String(student['Rom']).trim();
+                    if (!roomGroups[room]) {
+                        roomGroups[room] = [];
+                    }
+                    roomGroups[room].push(student);
+                });
+
+                // Sort students within each room by name
+                Object.keys(roomGroups).forEach(room => {
+                    roomGroups[room].sort((a, b) => {
+                        if (sortPreference === 'fornavn') {
+                            const firstNameA = String(a['Fornavn']).trim().toLowerCase();
+                            const firstNameB = String(b['Fornavn']).trim().toLowerCase();
+                            const firstNameCompare = firstNameA.localeCompare(firstNameB);
+                            if (firstNameCompare !== 0) return firstNameCompare;
+                            
+                            const lastNameA = String(a['Etternavn']).trim().toLowerCase();
+                            const lastNameB = String(b['Etternavn']).trim().toLowerCase();
+                            return lastNameA.localeCompare(lastNameB);
+                        } else {
+                            const lastNameA = String(a['Etternavn']).trim().toLowerCase();
+                            const lastNameB = String(b['Etternavn']).trim().toLowerCase();
+                            const lastNameCompare = lastNameA.localeCompare(lastNameB);
+                            if (lastNameCompare !== 0) return lastNameCompare;
+                            
+                            const firstNameA = String(a['Fornavn']).trim().toLowerCase();
+                            const firstNameB = String(b['Fornavn']).trim().toLowerCase();
+                            return firstNameA.localeCompare(firstNameB);
+                        }
+                    });
+                });
+
+                // Sort rooms numerically
+                const sortedRooms = Object.keys(roomGroups).sort((a, b) => {
+                    return parseInt(a) - parseInt(b) || a.localeCompare(b);
+                });
+
+                const children = [];
+
+                // Generate table for each room
+                sortedRooms.forEach((room, roomIndex) => {
+                    const students = roomGroups[room];
+                    const roomDate = formatDate(students[0]['Eksamensdato']);
+
+                    // Add page break before each room (except first)
+                    if (roomIndex > 0) {
+                        children.push(new Paragraph({
+                            children: [new PageBreak()]
+                        }));
+                    }
+
+                    // Room header
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: `${roomDate} - Rom ${room}`,
+                                bold: true,
+                                size: 24
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER,
+                        spacing: { after: 200 }
+                    }));
+
+                    // Create table rows
+                    const tableRows = [
+                        // Header row
+                        new TableRow({
+                            children: [
+                                new TableCell({
+                                    children: [new Paragraph({ text: 'Navn', children: [new TextRun({ bold: true, size: 18 })] })],
+                                    verticalAlign: VerticalAlign.CENTER
+                                }),
+                                new TableCell({
+                                    children: [new Paragraph({ text: 'PAS Kandidatnummer', children: [new TextRun({ bold: true, size: 18 })] })],
+                                    verticalAlign: VerticalAlign.CENTER
+                                }),
+                                new TableCell({
+                                    children: [new Paragraph({ text: 'Fagkode - Fagnavn', children: [new TextRun({ bold: true, size: 18 })] })],
+                                    verticalAlign: VerticalAlign.CENTER
+                                }),
+                                new TableCell({
+                                    children: [new Paragraph({ text: 'Telefon', children: [new TextRun({ bold: true, size: 18 })] })],
+                                    verticalAlign: VerticalAlign.CENTER
+                                }),
+                                new TableCell({
+                                    children: [new Paragraph({ text: 'Møtt', children: [new TextRun({ bold: true, size: 18 })] })],
+                                    verticalAlign: VerticalAlign.CENTER
+                                }),
+                                new TableCell({
+                                    children: [new Paragraph({ text: 'Tidspunkt levert', children: [new TextRun({ bold: true, size: 18 })] })],
+                                    verticalAlign: VerticalAlign.CENTER
+                                }),
+                                new TableCell({
+                                    children: [new Paragraph({ text: 'Hendelser', children: [new TextRun({ bold: true, size: 18 })] })],
+                                    verticalAlign: VerticalAlign.CENTER
+                                })
+                            ],
+                            height: { value: 300, rule: 'atLeast' }
+                        })
+                    ];
+
+                    // Data rows
+                    students.forEach(student => {
+                        const name = getDisplayName(student);
+                        const pas = String(student['PAS kandidatnummer'] || '');
+                        const subject = `${student['Fagkode']} - ${student['Fagnavn']}`;
+                        const phone = String(student['Telefon'] || '');
+
+                        tableRows.push(
+                            new TableRow({
+                                children: [
+                                    new TableCell({
+                                        children: [new Paragraph(name)],
+                                        verticalAlign: VerticalAlign.TOP
+                                    }),
+                                    new TableCell({
+                                        children: [new Paragraph(pas)],
+                                        verticalAlign: VerticalAlign.TOP
+                                    }),
+                                    new TableCell({
+                                        children: [new Paragraph(subject)],
+                                        verticalAlign: VerticalAlign.TOP
+                                    }),
+                                    new TableCell({
+                                        children: [new Paragraph(phone)],
+                                        verticalAlign: VerticalAlign.TOP
+                                    }),
+                                    new TableCell({
+                                        children: [new Paragraph('')],
+                                        verticalAlign: VerticalAlign.TOP
+                                    }),
+                                    new TableCell({
+                                        children: [new Paragraph('')],
+                                        verticalAlign: VerticalAlign.TOP
+                                    }),
+                                    new TableCell({
+                                        children: [new Paragraph('')],
+                                        verticalAlign: VerticalAlign.TOP
+                                    })
+                                ],
+                                height: { value: 200, rule: 'atLeast' }
+                            })
+                        );
+                    });
+
+                    // Add table to document
+                    children.push(new Table({
+                        rows: tableRows,
+                        width: { size: 100, type: 'pct' }
+                    }));
+                });
+
+                const doc = new Document({
+                    sections: [{
+                        properties: {
+                            page: {
+                                margin: {
+                                    top: 400,
+                                    right: 400,
+                                    bottom: 400,
+                                    left: 400
+                                }
+                            }
+                        },
+                        children: children
+                    }]
+                });
+
+                // Generate blob and modify for landscape
+                let blob = await docx.Packer.toBlob(doc);
+                const arrayBuffer = await blob.arrayBuffer();
+                
+                // Load the docx as a zip
+                const zip = new JSZip();
+                await zip.loadAsync(arrayBuffer);
+                
+                // Modify document.xml to set landscape
+                let docXml = await zip.file('word/document.xml').async('string');
+                docXml = docXml.replace(
+                    /<w:pgSz[^>]*\/>/g,
+                    '<w:pgSz w:w="16838" w:h="11906" w:orient="landscape"/>'
+                );
+                zip.file('word/document.xml', docXml);
+                
+                // Generate modified blob
+                blob = await zip.generateAsync({type: 'blob'});
+                saveAs(blob, 'room_exam_tables.docx');
+
+                showStatus(`Room tables generated with ${sortedRooms.length} rooms`, 'success');
+
+            } catch (error) {
+                showStatus('Error generating room tables: ' + error.message, 'error');
+                console.error(error);
+            } finally {
+                generateBtn.disabled = false;
+                document.getElementById('generateTablesBtn').disabled = false;
+                spinner.classList.remove('visible');
+            }
+        }
+
+        async function generateDocument() {
+            if (!currentData) return;
+
+            if (selectedDates.size === 0) {
+                showStatus('Please select at least one date to export', 'error');
+                return;
+            }
+
+            generateBtn.disabled = true;
+            spinner.classList.add('visible');
+            showStatus('Generating document...', 'processing');
+
+            try {
+                // Check if docx library is loaded
+                if (typeof docx === 'undefined') {
+                    throw new Error('Document library not loaded. Please refresh the page and try again.');
+                }
+
+                const { Document, Paragraph, TextRun, AlignmentType, HeadingLevel, PageBreak } = docx;
+
+                // Sort data by room number first, then by selected name field
+                const sortedData = [...currentData]
+                    .filter(student => {
+                        const date = formatDate(student['Eksamensdato']);
+                        return selectedDates.has(date);
+                    })
+                    .sort((a, b) => {
+                        const roomA = String(a['Rom']).trim();
+                        const roomB = String(b['Rom']).trim();
+                        
+                        // Compare room numbers
+                        const roomCompare = roomA.localeCompare(roomB, undefined, { numeric: true });
+                        if (roomCompare !== 0) return roomCompare;
+                        
+                        // If same room, compare by selected field
+                        if (sortPreference === 'fornavn') {
+                            // Sort by first name, then last name
+                            const firstNameA = String(a['Fornavn']).trim().toLowerCase();
+                            const firstNameB = String(b['Fornavn']).trim().toLowerCase();
+                            const firstNameCompare = firstNameA.localeCompare(firstNameB);
+                            if (firstNameCompare !== 0) return firstNameCompare;
+                            
+                            const lastNameA = String(a['Etternavn']).trim().toLowerCase();
+                            const lastNameB = String(b['Etternavn']).trim().toLowerCase();
+                            return lastNameA.localeCompare(lastNameB);
+                        } else {
+                            // Sort by last name, then first name
+                            const lastNameA = String(a['Etternavn']).trim().toLowerCase();
+                            const lastNameB = String(b['Etternavn']).trim().toLowerCase();
+                            const lastNameCompare = lastNameA.localeCompare(lastNameB);
+                            if (lastNameCompare !== 0) return lastNameCompare;
+                            
+                            const firstNameA = String(a['Fornavn']).trim().toLowerCase();
+                            const firstNameB = String(b['Fornavn']).trim().toLowerCase();
+                            return firstNameA.localeCompare(firstNameB);
+                        }
+                    });
+
+                const children = [];
+
+                sortedData.forEach((student, index) => {
+                    // Add page break before each student (except first)
+                    if (index > 0) {
+                        children.push(new Paragraph({
+                            children: [new PageBreak()]
+                        }));
+                    }
+
+                    // Spacing at top
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 480 } // size 48pt
+                    }));
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 480 }
+                    }));
+
+                    // Room Number - Size 48, Arial Bold
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: String(student['Rom']),
+                                bold: true,
+                                size: 96, // 48pt * 2
+                                font: 'Arial'
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    }));
+
+                    // Three line breaks (48pt spacing)
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 480 }
+                    }));
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 480 }
+                    }));
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 480 }
+                    }));
+
+                    // Student Name - Arial Bold size 26
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: getDisplayName(student),
+                                bold: true,
+                                size: 52, // 26pt * 2
+                                font: 'Arial'
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    }));
+
+                    // One line break (26pt spacing)
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 520 }
+                    }));
+
+                    // PAS Kandidatnr - size 16 Arial
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: `PAS Kandidatnr: ${student['PAS kandidatnummer']}`,
+                                size: 32, // 16pt * 2
+                                font: 'Arial'
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    }));
+
+                    // 4 line breaks (16pt spacing)
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 320 }
+                    }));
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 320 }
+                    }));
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 320 }
+                    }));
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 320 }
+                    }));
+
+                    // Fagkode - Fagnavn (Size 20, Bold)
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: `${student['Fagkode']} - ${student['Fagnavn']}`,
+                                bold: true,
+                                font: 'Arial',
+                                size: 40 // 20pt * 2
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    }));
+
+                    // 5 line breaks (20pt spacing)
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 400 }
+                    }));
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 400 }
+                    }));
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 400 }
+                    }));
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 400 }
+                    }));
+                    children.push(new Paragraph({ 
+                        text: '',
+                        spacing: { line: 400 }
+                    }));
+
+                    // Exam Date - size 20 Arial Bold
+                    children.push(new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: formatDate(student['Eksamensdato']),
+                                bold: true,
+                                size: 40, // 20pt * 2
+                                font: 'Arial'
+                            })
+                        ],
+                        alignment: AlignmentType.CENTER
+                    }));
+                });
+
+                const doc = new Document({
+                    sections: [{
+                        properties: {},
+                        children: children
+                    }]
+                });
+
+                const blob = await docx.Packer.toBlob(doc);
+                saveAs(blob, 'student_exam_cards.docx');
+
+                showStatus(`Document generated with ${sortedData.length} students`, 'success');
+
+            } catch (error) {
+                showStatus('Error generating document: ' + error.message, 'error');
+                console.error(error);
+            } finally {
+                generateBtn.disabled = false;
+                spinner.classList.remove('visible');
+            }
+        }
+
+        function showStatus(message, type) {
+            status.textContent = message;
+            status.className = 'status visible ' + type;
+        }
+    </script>
+</body>
+</html>
