@@ -610,20 +610,20 @@
                 <h3 style="margin: 0; font-size: 15px;">Excel-kolonner</h3>
             </div>
             <div id="excelColumnsList" style="display: none; padding: 10px;">
-                <p style="color: #555; font-size: 13px; margin-bottom: 10px; font-weight: 500;">Obligatoriske:</p>
+                <p style="color: #555; font-size: 13px; margin-bottom: 10px; font-weight: 500;">Obligatoriske (støtter Bokmål, Nynorsk og Engelsk):</p>
                 <ul style="margin-bottom: 15px;">
-                    <li>Rom</li>
+                    <li>Navn / Namn / Name (eller Fornavn + Etternavn)</li>
+                    <li>Fødselsnummer</li>
+                    <li>PAS kandidatnummer</li>
                     <li>Fagkode</li>
                     <li>Fagnavn</li>
-                    <li>Fornavn</li>
-                    <li>Etternavn</li>
                     <li>Eksamensdato</li>
-                    <li>PAS kandidatnummer</li>
+                    <li>Eksamensrom</li>
                 </ul>
                 <p style="color: #555; font-size: 13px; margin-bottom: 10px; font-weight: 500;">Valgfrie:</p>
                 <ul>
                     <li>Telefon (brukes i romtabeller)</li>
-                    <li>eksamenstilrettelegginger (brukes i tilretteleggingstabeller)</li>
+                    <li>Eksamenstilrettelegginger / Eksamenstilretteleggingar / Exam accommodations / Facilitations (brukes i tilretteleggingstabeller)</li>
                 </ul>
             </div>
         </div>
@@ -643,6 +643,9 @@
 
     <!-- QRious for generating QR codes client-side -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js"></script>
+
+    <!-- Compact exam database fallback -->
+    <script src="data/examDatabaseCompact.js"></script>
 
     <script>
         let currentData = null;
@@ -793,30 +796,55 @@
                         return;
                     }
 
-                    // Check for required columns
-                    const requiredColumns = [
-                        'Rom', 'Fagkode', 'Fagnavn', 'Fornavn',
-                        'Etternavn', 'Eksamensdato', 'PAS kandidatnummer'
-                    ];
+                    // Check for required columns (supporting Bokmål, Nynorsk, and English)
+                    const requiredColumnGroups = {
+                        'Rom/Room': ['Eksamensrom', 'Rom', 'Room name'],
+                        'Fagkode': ['Fagkode', 'Subject code'],
+                        'Fagnavn': ['Fagnavn', 'Fagnamn', 'Subject name'],
+                        'Navn': ['Navn', 'Namn', 'Name', 'Fornavn'], // If Navn exists, we're good; otherwise need Fornavn+Etternavn
+                        'Etternavn': ['Etternavn', 'Etternamn', 'Family name'],
+                        'Eksamensdato': ['Eksamensdato', 'Exam date'],
+                        'PAS kandidatnummer': ['PAS kandidatnummer', 'PAS candidate number']
+                    };
 
                     const firstRow = jsonData[0];
-                    const missingColumns = requiredColumns.filter(col => !(col in firstRow));
+                    const missingColumns = [];
+
+                    // Check each required field
+                    for (const [fieldName, variants] of Object.entries(requiredColumnGroups)) {
+                        const hasColumn = variants.some(col => col in firstRow);
+                        
+                        // Special case: if we have "Navn" we don't need Fornavn/Etternavn
+                        if (fieldName === 'Navn') {
+                            const hasFullName = ['Navn', 'Namn', 'Name'].some(col => col in firstRow);
+                            const hasSplitName = (['Fornavn', 'Fornamn', 'Given name'].some(col => col in firstRow)) &&
+                                                 (['Etternavn', 'Etternamn', 'Family name'].some(col => col in firstRow));
+                            if (!hasFullName && !hasSplitName) {
+                                missingColumns.push('Navn/Namn/Name or (Fornavn/Fornamn/Given name + Etternavn/Etternamn/Family name)');
+                            }
+                        } else if (fieldName === 'Etternavn') {
+                            // Skip this check if we already validated name handling above
+                            continue;
+                        } else if (!hasColumn) {
+                            missingColumns.push(variants.join(' / '));
+                        }
+                    }
 
                     if (missingColumns.length > 0) {
                         showStatus(`Manglende kolonner: ${missingColumns.join(', ')}`, 'error');
                         return;
                     }
 
-                    // Filter by Form column if it exists (only keep "Skriftlig")
+                    // Filter by Form column if it exists (only keep "Skriftlig/Skriftleg/Written")
                     let filteredData = jsonData;
                     if ('Form' in firstRow) {
                         filteredData = jsonData.filter(student => {
-                            const form = String(student['Form']).trim();
-                            return form === 'Skriftlig';
+                            const form = String(student['Form']).trim().toLowerCase();
+                            return form === 'skriftlig' || form === 'skriftleg' || form === 'written';
                         });
                         
                         if (filteredData.length === 0) {
-                            showStatus('Ingen studenter med "Skriftlig" eksamen funnet', 'error');
+                            showStatus('Ingen studenter med "Skriftlig/Skriftleg/Written" eksamen funnet', 'error');
                             return;
                         }
                     }
@@ -856,8 +884,8 @@
             const dayMap = {}; // { date: { kandidatnummer: [...students] } }
             
             data.forEach(student => {
-                const date = formatDate(student['Eksamensdato']);
-                const kandidatnummer = String(student['PAS kandidatnummer'] ?? '').trim();
+                const date = formatDate(getEksamensdatoValue(student));
+                const kandidatnummer = String(getPASKandidatnummerValue(student) ?? '').trim();
                 
                 if (!kandidatnummer) return; // Skip if no kandidatnummer
                 
@@ -888,8 +916,8 @@
             if (duplicates.length > 0) {
                 let html = '';
                 duplicates.forEach(dup => {
-                    const name = `${dup.students[0]['Fornavn']} ${dup.students[0]['Etternavn']}`;
-                    const fagkoder = dup.students.map(s => String(s['Fagkode']).trim()).join(', ');
+                    const name = getDisplayName(dup.students[0]);
+                    const fagkoder = dup.students.map(s => String(getFagkodeValue(s)).trim()).join(', ');
                     html += `<div><strong>${name}</strong> (${dup.kandidatnummer}) - ${dup.date}: ${fagkoder}</div>`;
                 });
                 duplicatesList.innerHTML = html;
@@ -906,8 +934,8 @@
             // Find students without assigned rooms (only for selected dates)
             const missingRooms = [];
             currentData.forEach(student => {
-                const room = String(student['Rom'] || '').trim();
-                const date = formatDate(student['Eksamensdato']);
+                const room = String(getRoomValue(student) || '').trim();
+                const date = formatDate(getEksamensdatoValue(student));
                 
                 // Only check if date is selected
                 if (!selectedDates.has(date)) {
@@ -915,10 +943,23 @@
                 }
                 
                 if (!room || room === '' || room === 'undefined' || room === 'null') {
-                    const name = `${student['Fornavn']} ${student['Etternavn']}`;
-                    const firstName = String(student['Fornavn']).trim();
-                    const fagkode = String(student['Fagkode']).trim();
-                    const kandidatnummer = student['PAS kandidatnummer'];
+                    const name = getDisplayName(student);
+                    // For sorting we need first name - extract from single name or use Fornavn
+                    let firstName;
+                    const fornavnValue = getFornavnValue(student);
+                    if (fornavnValue) {
+                        firstName = String(fornavnValue).trim();
+                    } else {
+                        const singleName = student['Navn'] ?? student['Name'] ?? student['Namn'];
+                        if (singleName) {
+                            const nameParts = String(singleName).trim().replace(/,/g, '').split(/\s+/);
+                            firstName = nameParts[0]; // First word as first name
+                        } else {
+                            firstName = '';
+                        }
+                    }
+                    const fagkode = String(getFagkodeValue(student)).trim();
+                    const kandidatnummer = getPASKandidatnummerValue(student);
                     missingRooms.push({ name, firstName, kandidatnummer, date, fagkode });
                 }
             });
@@ -960,9 +1001,21 @@
         function formatDate(dateValue) {
             if (!dateValue) return '';
             
-            // If it's already a string, return it
+            // If it's already a string, normalize it
             if (typeof dateValue === 'string') {
-                return dateValue;
+                const trimmed = dateValue.trim();
+                // Check if it's in dd/mm/yyyy format (English) and convert to dd.mm.yyyy
+                if (/^\d{1,2}\/\d{1,2}\/\d{4}$/.test(trimmed)) {
+                    const parts = trimmed.split('/');
+                    return `${parts[0].padStart(2, '0')}.${parts[1].padStart(2, '0')}.${parts[2]}`;
+                }
+                // Check if it's in yyyy-mm-dd format and convert to dd.mm.yyyy
+                if (/^\d{4}-\d{1,2}-\d{1,2}$/.test(trimmed)) {
+                    const parts = trimmed.split('-');
+                    return `${parts[2].padStart(2, '0')}.${parts[1].padStart(2, '0')}.${parts[0]}`;
+                }
+                // Already in correct format or other format, return as-is
+                return trimmed;
             }
 
             // If it's an Excel date number
@@ -978,7 +1031,7 @@
             // Extract unique dates
             const datesSet = new Set();
             data.forEach(student => {
-                const date = formatDate(student['Eksamensdato']);
+                const date = formatDate(getEksamensdatoValue(student));
                 if (date) datesSet.add(date);
             });
 
@@ -1155,14 +1208,86 @@
         }
 
         function getDisplayName(student) {
-            const fornavn = student['Fornavn'];
-            const etternavn = student['Etternavn'];
+            // Check for single name column in three languages
+            const singleName = student['Navn'] ?? student['Name'] ?? student['Namn'];
+            if (singleName) {
+                // If we have a single name column, check if it contains comma (surname, firstname format)
+                const nameStr = String(singleName).trim();
+                if (nameStr.includes(',')) {
+                    // Already in "Etternavn, Fornavn" format
+                    if (sortPreference === 'fornavn') {
+                        // Convert to "Fornavn Etternavn"
+                        const parts = nameStr.split(',').map(p => p.trim());
+                        return parts.length === 2 ? `${parts[1]} ${parts[0]}` : nameStr;
+                    } else {
+                        return nameStr;
+                    }
+                } else {
+                    // Assume format is "Fornavn Etternavn"
+                    if (sortPreference === 'fornavn') {
+                        return nameStr;
+                    } else {
+                        // Convert to "Etternavn, Fornavn"
+                        const parts = nameStr.split(/\s+/);
+                        if (parts.length >= 2) {
+                            const fornavn = parts.slice(0, -1).join(' ');
+                            const etternavn = parts[parts.length - 1];
+                            return `${etternavn}, ${fornavn}`;
+                        }
+                        return nameStr;
+                    }
+                }
+            }
+            
+            // Fallback to separate Fornavn/Etternavn columns
+            const fornavn = getFornavnValue(student);
+            const etternavn = getEtternavnValue(student);
             
             if (sortPreference === 'fornavn') {
                 return `${fornavn} ${etternavn}`;
             } else {
                 return `${etternavn}, ${fornavn}`;
             }
+        }
+
+        function getRoomValue(student) {
+            // Support both "Rom" (legacy) and "Eksamensrom" (current standard) and English
+            return student['Eksamensrom'] ?? student['Rom'] ?? student['Room name'] ?? '';
+        }
+
+        function getFagkodeValue(student) {
+            // Support Bokmål/Nynorsk and English
+            return student['Fagkode'] ?? student['Subject code'] ?? '';
+        }
+
+        function getFagnavnValue(student) {
+            // Support Bokmål, Nynorsk and English
+            return student['Fagnavn'] ?? student['Fagnamn'] ?? student['Subject name'] ?? '';
+        }
+
+        function getEksamensdatoValue(student) {
+            // Support Bokmål/Nynorsk and English
+            return student['Eksamensdato'] ?? student['Exam date'] ?? '';
+        }
+
+        function getPASKandidatnummerValue(student) {
+            // Support Bokmål/Nynorsk and English
+            return student['PAS kandidatnummer'] ?? student['PAS candidate number'] ?? '';
+        }
+
+        function getTelefonValue(student) {
+            // Support Bokmål/Nynorsk and English
+            return student['Telefon'] ?? student['Phone'] ?? '';
+        }
+
+        function getFornavnValue(student) {
+            // Support Bokmål, Nynorsk and English
+            return student['Fornavn'] ?? student['Fornamn'] ?? student['Given name'] ?? '';
+        }
+
+        function getEtternavnValue(student) {
+            // Support Bokmål, Nynorsk and English
+            return student['Etternavn'] ?? student['Etternamn'] ?? student['Family name'] ?? '';
         }
 
         function cleanPhoneNumber(phone) {
@@ -1192,9 +1317,16 @@
         }
 
         function getTilretteleggingValue(student) {
-            return student['Eksamensstilrettelegginger']
+            // Check for all three language variants and common misspellings
+            return student['Eksamenstilrettelegginger']
+                ?? student['Eksamenstilretteleggingar'] // Nynorsk
+                ?? student['Exam accommodations'] // English
+                ?? student['Facilitations'] // English alternative
                 ?? student['Eksamenstilrettelegginger']
                 ?? student['eksamenstilrettelegginger']
+                ?? student['eksamenstilretteleggingar'] // Nynorsk lowercase
+                ?? student['exam accommodations'] // English
+                ?? student['facilitations'] // English alternative lowercase
                 ?? student['Eksamenstilrettelegging']
                 ?? student['eksamenstilrettelegging']
                 ?? '';
@@ -1211,24 +1343,11 @@
             const cleaned = cleanTilretteleggingText(getTilretteleggingValue(student));
             const lower = cleaned.toLowerCase();
 
-            let remaining = lower
-                .replace(/utvidet tid ved skriftlig eksamen/gi, '')
-                .replace(/skjermet eksamensplass:\s*vi gjør oppmerksom på at skjermet eksamensplass ikke betyr eget rom, men at du for eksempel får sitte bak skillevegger/gi, '')
-                .replace(/skjermet eksamensplass/gi, '')
-                .replace(/annet:\s*bruk av lingdys på deler av skriftlig eksamen som tillater bruk av pc\/mac/gi, '')
-                .replace(/bruk av lingdys på deler av skriftlig eksamen som tillater bruk av pc\/mac/gi, '')
-                .replace(/lingdys/gi, '')
-                .replace(/annet:/gi, '')
-                .replace(/[.,;:\-–_/()]/g, ' ')
-                .replace(/\s+/g, ' ')
-                .trim();
-
             return {
                 cleaned,
                 utvidetTid: lower.includes('utvidet tid ved skriftlig eksamen'),
                 skjermetPlass: lower.includes('skjermet eksamensplass'),
-                lingdys: lower.includes('lingdys'),
-                annet: remaining.length > 0
+                lingdys: lower.includes('lingdys') || lower.includes('opplesing')
             };
         }
 
@@ -1242,15 +1361,21 @@
 
             if (onlyTilrettelegging) {
                 const hasTilretteColumn = currentData.length > 0 && currentData.some(student => {
-                    return Object.prototype.hasOwnProperty.call(student, 'Eksamensstilrettelegginger')
-                        || Object.prototype.hasOwnProperty.call(student, 'Eksamenstilrettelegginger')
+                    return Object.prototype.hasOwnProperty.call(student, 'Eksamenstilrettelegginger')
+                        || Object.prototype.hasOwnProperty.call(student, 'Eksamenstilretteleggingar') // Nynorsk
+                        || Object.prototype.hasOwnProperty.call(student, 'Exam accommodations') // English
+                        || Object.prototype.hasOwnProperty.call(student, 'Facilitations') // English alternative
+                        || Object.prototype.hasOwnProperty.call(student, 'Eksamensstilrettelegginger')
                         || Object.prototype.hasOwnProperty.call(student, 'eksamenstilrettelegginger')
+                        || Object.prototype.hasOwnProperty.call(student, 'eksamenstilretteleggingar') // Nynorsk lowercase
+                        || Object.prototype.hasOwnProperty.call(student, 'exam accommodations') // English
+                        || Object.prototype.hasOwnProperty.call(student, 'facilitations') // English alternative lowercase
                         || Object.prototype.hasOwnProperty.call(student, 'Eksamenstilrettelegging')
                         || Object.prototype.hasOwnProperty.call(student, 'eksamenstilrettelegging');
                 });
 
                 if (!hasTilretteColumn) {
-                    showStatus('Manglende kolonne: eksamenstilrettelegginger', 'error');
+                    showStatus('Manglende kolonne: eksamenstilrettelegginger / eksamenstilretteleggingar / exam accommodations / Facilitations / facilitations', 'error');
                     return;
                 }
             }
@@ -1269,7 +1394,7 @@
 
                 // Filter and group by room
                 const filteredData = currentData.filter(student => {
-                    const date = formatDate(student['Eksamensdato']);
+                    const date = formatDate(getEksamensdatoValue(student));
                     if (!selectedDates.has(date)) {
                         return false;
                     }
@@ -1295,7 +1420,7 @@
                 // Group by room
                 const roomGroups = {};
                 filteredData.forEach(student => {
-                    const room = String(student['Rom']).trim();
+                    const room = String(getRoomValue(student)).trim();
                     if (!roomGroups[room]) {
                         roomGroups[room] = [];
                     }
@@ -1306,22 +1431,22 @@
                 Object.keys(roomGroups).forEach(room => {
                     roomGroups[room].sort((a, b) => {
                         if (sortPreference === 'fornavn') {
-                            const firstNameA = String(a['Fornavn']).trim().toLowerCase();
-                            const firstNameB = String(b['Fornavn']).trim().toLowerCase();
+                            const firstNameA = String(getFornavnValue(a)).trim().toLowerCase();
+                            const firstNameB = String(getFornavnValue(b)).trim().toLowerCase();
                             const firstNameCompare = firstNameA.localeCompare(firstNameB);
                             if (firstNameCompare !== 0) return firstNameCompare;
                             
-                            const lastNameA = String(a['Etternavn']).trim().toLowerCase();
-                            const lastNameB = String(b['Etternavn']).trim().toLowerCase();
+                            const lastNameA = String(getEtternavnValue(a)).trim().toLowerCase();
+                            const lastNameB = String(getEtternavnValue(b)).trim().toLowerCase();
                             return lastNameA.localeCompare(lastNameB);
                         } else {
-                            const lastNameA = String(a['Etternavn']).trim().toLowerCase();
-                            const lastNameB = String(b['Etternavn']).trim().toLowerCase();
+                            const lastNameA = String(getEtternavnValue(a)).trim().toLowerCase();
+                            const lastNameB = String(getEtternavnValue(b)).trim().toLowerCase();
                             const lastNameCompare = lastNameA.localeCompare(lastNameB);
                             if (lastNameCompare !== 0) return lastNameCompare;
                             
-                            const firstNameA = String(a['Fornavn']).trim().toLowerCase();
-                            const firstNameB = String(b['Fornavn']).trim().toLowerCase();
+                            const firstNameA = String(getFornavnValue(a)).trim().toLowerCase();
+                            const firstNameB = String(getFornavnValue(b)).trim().toLowerCase();
                             return firstNameA.localeCompare(firstNameB);
                         }
                     });
@@ -1345,7 +1470,7 @@
                 // Generate table for each room
                 roomsToRender.forEach((room, roomIndex) => {
                     const students = roomGroups[room];
-                    const roomDate = formatDate(students[0]['Eksamensdato']);
+                    const roomDate = formatDate(getEksamensdatoValue(students[0]));
 
                     // Check if any student in this room has skjermet plass
                     const hasSkjermetPlass = onlyTilrettelegging && students.some(student => {
@@ -1554,9 +1679,9 @@
                     // Data rows
                     students.forEach(student => {
                         const name = getDisplayName(student);
-                        const pas = String(student['PAS kandidatnummer'] || '');
-                        const subject = shortenSubject(student['Fagkode'], student['Fagnavn']);
-                        const phone = cleanPhoneNumber(student['Telefon']);
+                        const pas = String(getPASKandidatnummerValue(student) || '');
+                        const subject = shortenSubject(getFagkodeValue(student), getFagnavnValue(student));
+                        const phone = cleanPhoneNumber(getTelefonValue(student));
                         const tilrette = getTilretteleggingFlags(student);
 
                         // Student data row
@@ -1564,13 +1689,13 @@
                             top: thickBorder,
                             left: thickBorder,
                             right: thinBorder,
-                            bottom: tilrette.annet ? thinBorder : thickBorder
+                            bottom: thickBorder
                         } : {};
                         const lastCellBorders = onlyTilrettelegging ? {
                             top: thickBorder,
                             left: thinBorder,
                             right: thickBorder,
-                            bottom: tilrette.annet ? thinBorder : thickBorder
+                            bottom: thickBorder
                         } : {};
 
                         tableRows.push(
@@ -1603,7 +1728,7 @@
                                             top: thickBorder,
                                             left: thinBorder,
                                             right: thinBorder,
-                                            bottom: tilrette.annet ? thinBorder : thickBorder
+                                            bottom: thickBorder
                                         } : {}
                                     }),
                                     new TableCell({
@@ -1619,7 +1744,7 @@
                                             top: thickBorder,
                                             left: thinBorder,
                                             right: thinBorder,
-                                            bottom: tilrette.annet ? thinBorder : thickBorder
+                                            bottom: thickBorder
                                         } : {}
                                     }),
                                     ...(!onlyTilrettelegging ? [
@@ -1649,7 +1774,7 @@
                                                 top: thickBorder,
                                                 left: thinBorder,
                                                 right: thinBorder,
-                                                bottom: tilrette.annet ? thinBorder : thickBorder
+                                                bottom: thickBorder
                                             }
                                         }),
                                         ...(hasSkjermetPlass ? [
@@ -1667,7 +1792,7 @@
                                                     top: thickBorder,
                                                     left: thinBorder,
                                                     right: thinBorder,
-                                                    bottom: tilrette.annet ? thinBorder : thickBorder
+                                                    bottom: thickBorder
                                                 }
                                             })
                                         ] : []),
@@ -1720,36 +1845,6 @@
                                 height: { value: 200, rule: 'atLeast' }
                             })
                         );
-
-                        // Blank spacing row for tilrettelegging export
-                        if (onlyTilrettelegging && tilrette.annet) {
-                            const columnCount = hasSkjermetPlass ? 6 : 5; // Navn, Kandidatnr, Fagkode-Fagnavn, Utvidet tid, (Skjermet plass), Lingdys
-                            tableRows.push(
-                                new TableRow({
-                                    cantSplit: true,
-                                    children: [
-                                        new TableCell({
-                                            children: [new Paragraph({
-                                                children: [new TextRun({
-                                                    text: 'Annet:',
-                                                    size: 24,
-                                                    font: 'Calibri'
-                                                })]
-                                            })],
-                                            columnSpan: columnCount,
-                                            verticalAlign: VerticalAlign.TOP,
-                                            borders: {
-                                                top: thinBorder,
-                                                left: thickBorder,
-                                                right: thickBorder,
-                                                bottom: thickBorder
-                                            }
-                                        })
-                                    ],
-                                    height: { value: 640, rule: 'atLeast' }
-                                })
-                            );
-                        }
                     });
 
                     // Add table to document
@@ -1842,16 +1937,16 @@
             const useOverride = overrideQRRequirement.checked;
             
             for (const student of currentData) {
-                const date = formatDate(student['Eksamensdato']);
+                const date = formatDate(getEksamensdatoValue(student));
                 if (!selectedDates.has(date)) continue;
                 
-                const fagkode = student['Fagkode'];
+                const fagkode = getFagkodeValue(student);
                 const examInfo = examDatabase[fagkode];
                 const isTwoPart = examInfo && examInfo.del1 && examInfo.del2;
                 
                 if (isTwoPart || useOverride) {
                     const key = `${date}-${fagkode}`;
-                    allExams.set(key, { date, fagkode, fagnavn: student['Fagnavn'], isTwoPart });
+                    allExams.set(key, { date, fagkode, fagnavn: getFagnavnValue(student), isTwoPart });
                 }
             }
 
@@ -1969,7 +2064,7 @@
                 // Sort data by room number first, then by selected name field
                 const sortedData = [...currentData]
                     .filter(student => {
-                        const date = formatDate(student['Eksamensdato']);
+                        const date = formatDate(getEksamensdatoValue(student));
                         return selectedDates.has(date);
                     })
                     .sort((a, b) => {
@@ -2028,7 +2123,7 @@
                     children.push(new Paragraph({
                         children: [
                             new TextRun({
-                                text: String(student['Rom']),
+                                text: String(getRoomValue(student)),
                                 bold: true,
                                 size: 96, // 48pt * 2
                                 font: 'Arial'
@@ -2074,7 +2169,7 @@
                     children.push(new Paragraph({
                         children: [
                             new TextRun({
-                                text: `PAS Kandidatnr: ${student['PAS kandidatnummer']}`,
+                                text: `PAS Kandidatnr: ${getPASKandidatnummerValue(student)}`,
                                 size: 32, // 16pt * 2
                                 font: 'Arial'
                             })
@@ -2104,7 +2199,7 @@
                     children.push(new Paragraph({
                         children: [
                             new TextRun({
-                                text: `${student['Fagkode']} - ${student['Fagnavn']}`,
+                                text: `${getFagkodeValue(student)} - ${getFagnavnValue(student)}`,
                                 bold: true,
                                 font: 'Arial',
                                 size: 40 // 20pt * 2
@@ -2139,7 +2234,7 @@
                     children.push(new Paragraph({
                         children: [
                             new TextRun({
-                                text: formatDate(student['Eksamensdato']),
+                                text: formatDate(getEksamensdatoValue(student)),
                                 bold: true,
                                 size: 40, // 20pt * 2
                                 font: 'Arial'
@@ -2188,12 +2283,12 @@
 
                 // For each selected date and room combination (only when that room has exams on that date)
                 for (const date of sortedDates) {
-                    const studentsOnDate = currentData.filter(student => formatDate(student['Eksamensdato']) === date);
-                    const roomsOnDate = [...new Set(studentsOnDate.map(student => String(student['Rom']).trim()))].sort();
+                    const studentsOnDate = currentData.filter(student => formatDate(getEksamensdatoValue(student)) === date);
+                    const roomsOnDate = [...new Set(studentsOnDate.map(student => String(getRoomValue(student)).trim()))].sort();
 
                     for (const room of roomsOnDate) {
-                        const studentsInRoomOnDate = studentsOnDate.filter(student => String(student['Rom']).trim() === room);
-                        const fagkoder = [...new Set(studentsInRoomOnDate.map(student => String(student['Fagkode']).trim()))];
+                        const studentsInRoomOnDate = studentsOnDate.filter(student => String(getRoomValue(student)).trim() === room);
+                        const fagkoder = [...new Set(studentsInRoomOnDate.map(student => String(getFagkodeValue(student)).trim()))];
 
                         if (fagkoder.length === 0) {
                             continue;
@@ -2269,7 +2364,7 @@
 
                 // Filter students with selected dates
                 const filteredData = currentData.filter(student => {
-                    const date = formatDate(student['Eksamensdato']);
+                    const date = formatDate(getEksamensdatoValue(student));
                     return selectedDates.has(date);
                 });
 
@@ -2278,7 +2373,7 @@
                 const useOverride = overrideQRRequirement.checked;
                 
                 for (const student of filteredData) {
-                    const fagkode = student['Fagkode'];
+                    const fagkode = getFagkodeValue(student);
                     const examInfo = examDatabase[fagkode];
                     
                     // Only include if fagkode is selected in the checkboxes
@@ -2317,7 +2412,7 @@
                 // Create array of {student, part, isTwoPart} objects
                 let sheetData = [];
                 for (const student of twoPartStudents) {
-                    const fagkode = student['Fagkode'];
+                    const fagkode = getFagkodeValue(student);
                     const examInfo = examDatabase[fagkode];
                     const isTwoPart = examInfo && examInfo.del1 && examInfo.del2;
                     
@@ -2337,8 +2432,8 @@
                     // Sort by: Dato -> Del -> Rom -> Name
                     sheetData.sort((a, b) => {
                         // First sort by Dato
-                        const dateA = formatDate(a.student['Eksamensdato']);
-                        const dateB = formatDate(b.student['Eksamensdato']);
+                        const dateA = formatDate(getEksamensdatoValue(a.student));
+                        const dateB = formatDate(getEksamensdatoValue(b.student));
                         if (dateA !== dateB) return dateA.localeCompare(dateB);
                         
                         // Then sort by Del (by index in parts array)
@@ -2347,54 +2442,54 @@
                         if (delA !== delB) return delA.localeCompare(delB);
                         
                         // Then sort by Rom
-                        const roomA = String(a.student['Rom']).trim();
-                        const roomB = String(b.student['Rom']).trim();
+                        const roomA = String(getRoomValue(a.student)).trim();
+                        const roomB = String(getRoomValue(b.student)).trim();
                         const roomCompare = roomA.localeCompare(roomB, undefined, { numeric: true });
                         if (roomCompare !== 0) return roomCompare;
                         
                         // Then sort by Name
                         if (sortPreference === 'fornavn') {
-                            const firstNameCompare = String(a.student['Fornavn']).trim().toLowerCase()
-                                .localeCompare(String(b.student['Fornavn']).trim().toLowerCase());
+                            const firstNameCompare = String(getFornavnValue(a.student)).trim().toLowerCase()
+                                .localeCompare(String(getFornavnValue(b.student)).trim().toLowerCase());
                             if (firstNameCompare !== 0) return firstNameCompare;
-                            return String(a.student['Etternavn']).trim().toLowerCase()
-                                .localeCompare(String(b.student['Etternavn']).trim().toLowerCase());
+                            return String(getEtternavnValue(a.student)).trim().toLowerCase()
+                                .localeCompare(String(getEtternavnValue(b.student)).trim().toLowerCase());
                         } else {
-                            const lastNameCompare = String(a.student['Etternavn']).trim().toLowerCase()
-                                .localeCompare(String(b.student['Etternavn']).trim().toLowerCase());
+                            const lastNameCompare = String(getEtternavnValue(a.student)).trim().toLowerCase()
+                                .localeCompare(String(getEtternavnValue(b.student)).trim().toLowerCase());
                             if (lastNameCompare !== 0) return lastNameCompare;
-                            return String(a.student['Fornavn']).trim().toLowerCase()
-                                .localeCompare(String(b.student['Fornavn']).trim().toLowerCase());
+                            return String(getFornavnValue(a.student)).trim().toLowerCase()
+                                .localeCompare(String(getFornavnValue(b.student)).trim().toLowerCase());
                         }
                     });
                 } else {
                     // Sort by: Dato -> Rom -> Name -> Del
                     sheetData.sort((a, b) => {
                         // First sort by Dato
-                        const dateA = formatDate(a.student['Eksamensdato']);
-                        const dateB = formatDate(b.student['Eksamensdato']);
+                        const dateA = formatDate(getEksamensdatoValue(a.student));
+                        const dateB = formatDate(getEksamensdatoValue(b.student));
                         if (dateA !== dateB) return dateA.localeCompare(dateB);
                         
                         // Then sort by Rom
-                        const roomA = String(a.student['Rom']).trim();
-                        const roomB = String(b.student['Rom']).trim();
+                        const roomA = String(getRoomValue(a.student)).trim();
+                        const roomB = String(getRoomValue(b.student)).trim();
                         const roomCompare = roomA.localeCompare(roomB, undefined, { numeric: true });
                         if (roomCompare !== 0) return roomCompare;
                         
                         // Then sort by Name
                         if (sortPreference === 'fornavn') {
-                            const firstNameCompare = String(a.student['Fornavn']).trim().toLowerCase()
-                                .localeCompare(String(b.student['Fornavn']).trim().toLowerCase());
+                            const firstNameCompare = String(getFornavnValue(a.student)).trim().toLowerCase()
+                                .localeCompare(String(getFornavnValue(b.student)).trim().toLowerCase());
                             if (firstNameCompare !== 0) return firstNameCompare;
-                            const lastNameCompare = String(a.student['Etternavn']).trim().toLowerCase()
-                                .localeCompare(String(b.student['Etternavn']).trim().toLowerCase());
+                            const lastNameCompare = String(getEtternavnValue(a.student)).trim().toLowerCase()
+                                .localeCompare(String(getEtternavnValue(b.student)).trim().toLowerCase());
                             if (lastNameCompare !== 0) return lastNameCompare;
                         } else {
-                            const lastNameCompare = String(a.student['Etternavn']).trim().toLowerCase()
-                                .localeCompare(String(b.student['Etternavn']).trim().toLowerCase());
+                            const lastNameCompare = String(getEtternavnValue(a.student)).trim().toLowerCase()
+                                .localeCompare(String(getEtternavnValue(b.student)).trim().toLowerCase());
                             if (lastNameCompare !== 0) return lastNameCompare;
-                            const firstNameCompare = String(a.student['Fornavn']).trim().toLowerCase()
-                                .localeCompare(String(b.student['Fornavn']).trim().toLowerCase());
+                            const firstNameCompare = String(getFornavnValue(a.student)).trim().toLowerCase()
+                                .localeCompare(String(getFornavnValue(b.student)).trim().toLowerCase());
                             if (firstNameCompare !== 0) return firstNameCompare;
                         }
                         
@@ -2408,7 +2503,7 @@
                 // Generate QR code sheets
                 for (let i = 0; i < sheetData.length; i++) {
                     const { student, part, isTwoPart } = sheetData[i];
-                    const kandidatnummer = student['PAS kandidatnummer'];
+                    const kandidatnummer = getPASKandidatnummerValue(student);
                     
                     // Add page break before each sheet (except first)
                     if (i > 0) {
@@ -2521,7 +2616,7 @@
                     children.push(new Paragraph({
                         children: [
                             new TextRun({
-                                text: `Rom: ${student['Rom']}`,
+                                text: `Rom: ${getRoomValue(student)}`,
                                 size: 28, // 14pt * 2
                                 font: 'Calibri'
                             })
@@ -2539,7 +2634,7 @@
                     children.push(new Paragraph({
                         children: [
                             new TextRun({
-                                text: formatDate(student['Eksamensdato']),
+                                text: formatDate(getEksamensdatoValue(student)),
                                 size: 28, // 14pt * 2
                                 font: 'Calibri'
                             })
@@ -2580,8 +2675,8 @@
             'FSP6502': { fagkode: 'FSP6502', del1: { start: '09:00', end: '13:00', startMinutes: 540, endMinutes: 780 }, del2: null, hjelpemidler: 'Denne eksamenen har ikke innebygd stavekontroll i oppgaven. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
             'IDR2026': { fagkode: 'IDR2026', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen.' },
             'IDR2027': { fagkode: 'IDR2027', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen.' },
-            'MAT1021': { fagkode: 'MAT1021', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
-            'MAT1023': { fagkode: 'MAT1023', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'MAT1021': { fagkode: 'MAT1021', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen. Du har tilgang til et begrenset utvalg nettbaserte hjelpemidler, men ikke internett for øvrig. Du kan ikke bruke automatisk tekstgenerator som chatbot eller tilsvarende teknologi.' },
+            'MAT1023': { fagkode: 'MAT1023', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen. Du har tilgang til et begrenset utvalg nettbaserte hjelpemidler, men ikke internett for øvrig. Du kan ikke bruke automatisk tekstgenerator som chatbot eller tilsvarende teknologi.' },
             'NOR1267': { fagkode: 'NOR1267', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
             'NOR1268': { fagkode: 'NOR1268', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt sidemål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
             'NOR1420': { fagkode: 'NOR1420', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
@@ -2589,31 +2684,76 @@
             'PSP5986': { fagkode: 'PSP5986', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbaserte hjelpemidler.' },
             'PSP5992': { fagkode: 'PSP5992', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har ikke innebygd stavekontroll i oppgaven. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
             'PSP6010': { fagkode: 'PSP6010', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har ikke innebygd stavekontroll i oppgaven. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
-            'REA3036': { fagkode: 'REA3036', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
-            'REA3039': { fagkode: 'REA3039', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3036': { fagkode: 'REA3036', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen. Du har tilgang til et begrenset utvalg nettbaserte hjelpemidler, men ikke internett for øvrig. Du kan ikke bruke automatisk tekstgenerator som chatbot eller tilsvarende teknologi.' },
+            'REA3039': { fagkode: 'REA3039', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen. Du har tilgang til et begrenset utvalg nettbasierte hjelpemidler, men ikke internett for øvrig. Du kan ikke bruke automatisk tekstgenerator som chatbot eller tilsvarende teknologi.' },
             'REA3043': { fagkode: 'REA3043', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Det er tillatt å bruke hjelpemidler som er på papir; som bøker, oppslagsverk, notater og liknende. Du kan også ha tilgang til noen få nettbasierte hjelpemidler.' },
-            'REA3046': { fagkode: 'REA3046', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
-            'REA3056': { fagkode: 'REA3056', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
-            'REA3058': { fagkode: 'REA3058', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
-            'REA3060': { fagkode: 'REA3060', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
-            'REA3062': { fagkode: 'REA3062', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'REA3046': { fagkode: 'REA3046', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen. Du har tilgang til et begrenset utvalg nettbasierte hjelpemidler, men ikke internett for øvrig. Du kan ikke bruke automatisk tekstgenerator som chatbot eller tilsvarende teknologi.' },
+            'REA3056': { fagkode: 'REA3056', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen. Du har tilgang til et begrenset utvalg nettbasierte hjelpemidler, men ikke internett for øvrig. Du kan ikke bruke automatisk tekstgenerator som chatbot eller tilsvarende teknologi.' },
+            'REA3058': { fagkode: 'REA3058', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen. Du har tilgang til et begrenset utvalg nettbasierte hjelpemidler, men ikke internett for øvrig. Du kan ikke bruke automatisk tekstgenerator som chatbot eller tilsvarende teknologi.' },
+            'REA3060': { fagkode: 'REA3060', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen. Du har tilgang til et begrenset utvalg nettbaserte hjelpemidler, men ikke internett for øvrig. Du kan ikke bruke automatisk tekstgenerator som chatbot eller tilsvarende teknologi.' },
+            'REA3062': { fagkode: 'REA3062', del1: { start: '09:00', end: '12:00', startMinutes: 540, endMinutes: 720 }, del2: { start: '12:00', end: '14:00', startMinutes: 720, endMinutes: 840 }, hjelpemidler: 'Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen. Du har tilgang til et begrenset utvalg nettbasierte hjelpemidler, men ikke internett for øvrig. Du kan ikke bruke automatisk tekstgenerator som chatbot eller tilsvarende teknologi.' },
             'SAM3046': { fagkode: 'SAM3046', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
             'SAM3051': { fagkode: 'SAM3051', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
             'SAM3058': { fagkode: 'SAM3058', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
-            'SAM3061': { fagkode: 'SAM3061', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Del 1 gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt. Del 2 kan du gjennomføre digitalt. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet.' },
+            'SAM3061': { fagkode: 'SAM3061', del1: { start: '09:00', end: '11:00', startMinutes: 540, endMinutes: 660 }, del2: { start: '11:00', end: '14:00', startMinutes: 660, endMinutes: 840 }, hjelpemidler: 'Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet eller på andre måter under eksamen. Du har tilgang til et begrenset utvalg nettbasierte hjelpemidler, men ikke internett for øvrig. Du kan ikke bruke automatisk tekstgenerator som chatbot eller tilsvarende teknologi.' },
             'SAM3073': { fagkode: 'SAM3073', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll i ditt hovedmål. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Du kan ikke bruke automatisk tekstgenerator som chatbot.' },
             'SPR3029': { fagkode: 'SPR3029', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' },
             'SPR3031': { fagkode: 'SPR3031', del1: { start: '09:00', end: '14:00', startMinutes: 540, endMinutes: 840 }, del2: null, hjelpemidler: 'Denne eksamenen har stavekontroll som kjenner igjen språket du skriver på. Alle hjelpemidler er lov på eksamen, med følgende unntak: Det er ikke tillatt å kommunisere med andre på nettet. Det er ikke tillatt å bruke oversettelsesprogram under eksamen.' }
         };
 
+        const examDatabaseCompact = window.examDatabaseCompact || {};
+        const examTextDictionary = window.examTextDictionary || [];
+
+        function timeToMinutes(time) {
+            if (!time || typeof time !== 'string' || !time.includes(':')) {
+                return null;
+            }
+
+            const [hours, minutes] = time.split(':').map(Number);
+            if (Number.isNaN(hours) || Number.isNaN(minutes)) {
+                return null;
+            }
+
+            return (hours * 60) + minutes;
+        }
+
+        function toPart(start, end) {
+            if (!start || !end) {
+                return null;
+            }
+
+            return {
+                start,
+                end,
+                startMinutes: timeToMinutes(start),
+                endMinutes: timeToMinutes(end)
+            };
+        }
+
         function fetchExamInfo(fagkode) {
             const normalizedFagkode = String(fagkode || '').trim().toUpperCase();
 
-            // Look up fagkode in embedded database
-            if (examDatabase[normalizedFagkode]) {
+            // Use compact database as primary source (has complete, accurate data from Udir API)
+            // Skip embedded database which has incomplete hjelpemidler text
+            // if (examDatabase[normalizedFagkode]) {
+            //     return {
+            //         ...examDatabase[normalizedFagkode],
+            //         fagkode: normalizedFagkode,
+            //         notInDatabase: false,
+            //         sourceUrl: `https://kandidat.udir.no/eksamensinfo/${normalizedFagkode}`
+            //     };
+            // }
+
+            // Look up in compact database format:
+            // [del1Start, del1End, del2Start, del2End, hjelpemidlerTextIndex]
+            if (examDatabaseCompact[normalizedFagkode]) {
+                const [del1Start, del1End, del2Start, del2End, textIndex] = examDatabaseCompact[normalizedFagkode];
+
                 return {
-                    ...examDatabase[normalizedFagkode],
                     fagkode: normalizedFagkode,
+                    del1: toPart(del1Start, del1End),
+                    del2: toPart(del2Start, del2End),
+                    hjelpemidler: typeof textIndex === 'number' ? (examTextDictionary[textIndex] || '') : '',
                     notInDatabase: false,
                     sourceUrl: `https://kandidat.udir.no/eksamensinfo/${normalizedFagkode}`
                 };
@@ -2628,6 +2768,14 @@
                 notInDatabase: true,
                 sourceUrl: `https://kandidat.udir.no/eksamensinfo/${normalizedFagkode || String(fagkode || '').trim()}`
             };
+        }
+
+        function splitIntoSentences(text) {
+            const matches = text.match(/[^.]+\.(?:\s+|$)/g);
+            if (!matches) {
+                return text ? [text.trim()] : [];
+            }
+            return matches.map(part => part.trim()).filter(Boolean);
         }
 
         function generateTimeHelpContent(date, room, fagkoder, fagkodeInfo) {
@@ -2804,19 +2952,49 @@
                         }));
 
                         // Clean and format hjelpemidler text
-                        const hjelpemidlerText = info.hjelpemidler
+                        let hjelpemidlerText = info.hjelpemidler
                             .replace(/<[^>]*>/g, '') // Remove HTML tags
                             .replace(/\s+/g, ' ') // Normalize whitespace
                             .trim();
 
-                        children.push(new docx.Paragraph({
-                            children: [new docx.TextRun({
-                                text: hjelpemidlerText,
-                                size: 22,
-                                font: 'Calibri'
-                            })],
-                            spacing: { after: 300 }
-                        }));
+                        // Always show Del 1 / Del 2 lines explicitly for two-part exams
+                        if (info.del1 && info.del2) {
+                            children.push(new docx.Paragraph({
+                                children: [new docx.TextRun({
+                                    text: `Del 1 (${info.del1.start} - ${info.del1.end}) gjennomfører du på papir: Se i eksamensveiledningen hvilke hjelpemidler som er tillatt.`,
+                                    size: 22,
+                                    font: 'Calibri'
+                                })],
+                                spacing: { after: 50 }
+                            }));
+
+                            children.push(new docx.Paragraph({
+                                children: [new docx.TextRun({
+                                    text: `Del 2 (${info.del2.start} - ${info.del2.end}) kan du gjennomføre digitalt.`,
+                                    size: 22,
+                                    font: 'Calibri'
+                                })],
+                                spacing: { after: 100 }
+                            }));
+
+                            // Remove duplicate Del-text from source text if present
+                            hjelpemidlerText = hjelpemidlerText
+                                .replace(/Del\s*1\s+gjennomf[øo]rer\s+du\s+p[åa]\s+papir:\s*Se\s+i\s+eksamensveiledningen\s+hvilke\s+hjelpemidler\s+som\s+er\s+tillatt\.\s*/i, '')
+                                .replace(/Del\s*2\s+kan\s+du\s+gjennomf[øo]re\s+digitalt\.\s*/i, '')
+                                .trim();
+                        }
+
+                        const helpLines = splitIntoSentences(hjelpemidlerText);
+                        helpLines.forEach((line, lineIndex) => {
+                            children.push(new docx.Paragraph({
+                                children: [new docx.TextRun({
+                                    text: line,
+                                    size: 22,
+                                    font: 'Calibri'
+                                })],
+                                spacing: { after: lineIndex === helpLines.length - 1 ? 300 : 50 }
+                            }));
+                        });
                     }
                 }
             });

@@ -47,14 +47,28 @@ python main.py
 
 ## Required Excel Columns
 
-Your Excel file must contain these columns (exact names):
-- **Rom** (Room number)
+Your Excel file must contain these columns. The application supports column names in three languages (Bokmål, Nynorsk, and English):
+
+### Core columns (same in all languages):
+- **Fødselsnummer** (Birth number)
+- **PAS kandidatnummer** (PAS candidate number)
 - **Fagkode** (Subject code)
 - **Fagnavn** (Subject name)
-- **Fornavn** (First name)
-- **Etternavn** (Last name)
 - **Eksamensdato** (Exam date)
-- **PAS kandidatnummer** (PAS candidate number)
+- **Telefon** (Phone)
+- **Eksamensrom** (Exam room)
+
+### Language-specific columns:
+- **Name column**: 
+  - Bokmål: **Navn**
+  - Nynorsk: **Namn**
+  - English: **Name**
+  - *Alternative*: **Fornavn** and **Etternavn** (separate First/Last name columns)
+
+- **Accommodations column** (optional, for tilrettelegging export):
+  - Bokmål: **Eksamenstilrettelegginger**
+  - Nynorsk: **Eksamenstilretteleggingar**
+  - English: **Exam accommodations**
 
 ## Output Format
 
