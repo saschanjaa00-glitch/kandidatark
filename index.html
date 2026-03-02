@@ -487,7 +487,7 @@
         </div>
 
         <div style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
-            <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Kandidatark</h3>
+            <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Kandidatark <span style="color: #999; font-size: 13px; font-weight: 400;">(sortert på rom og navn)</span></h3>
             <div style="display: flex; flex-direction: column; gap: 15px;">
                 <div>
                     <p style="color: #555; font-size: 13px; margin-bottom: 10px; font-weight: 500;">Sortering og visning:</p>
@@ -538,15 +538,15 @@
 
                         <!-- Sorting options -->
                         <div style="display: flex; flex-direction: column; gap: 8px;">
-                            <p style="color: #222; font-size: 13px; font-weight: 600;">Sortering:</p>
+                            <p style="color: #222; font-size: 13px; font-weight: 600;">Sortering <span style="color: #999; font-size: 12px; font-weight: 400;">(etter dato)</span></p>
                             <div style="display: flex; flex-direction: column; gap: 8px;">
                                 <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
                                     <input type="radio" name="qrSortOption" value="byDel" id="sortByDel" checked style="margin-right: 6px; width: 16px; height: 16px;">
-                                    Sorter etter Dato - Del - Rom - Navn (alle Del 1, så alle Del 2)
+                                    Sorter etter Del&nbsp;<span style="color: #999; font-size: 12px;">(Alle del 1, så del 2: Del - Rom - Navn)</span>
                                 </label>
                                 <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 13px;">
                                     <input type="radio" name="qrSortOption" value="byRomName" id="sortByRomName" style="margin-right: 6px; width: 16px; height: 16px;">
-                                    Sorter etter Dato - Rom - Navn - Del (Del 1 og 2 sammen per elev)
+                                    Sorter etter Rom&nbsp;<span style="color: #999; font-size: 12px;">(Del 1 og 2 sammen per elev: Rom - Navn - Del)</span>
                                 </label>
                             </div>
                         </div>
@@ -1351,6 +1351,67 @@
             };
         }
 
+        // Border style constants for table generation
+        const THICK_BORDER = {
+            style: 'single',
+            size: 20,
+            color: '000000'
+        };
+        
+        const THIN_BORDER = {
+            style: 'single',
+            size: 4,
+            color: 'CCCCCC'
+        };
+
+        // Shared sorting comparator function
+        function compareStudentsByName(a, b, preference = sortPreference) {
+            if (preference === 'fornavn') {
+                const firstNameA = String(getFornavnValue(a)).trim().toLowerCase();
+                const firstNameB = String(getFornavnValue(b)).trim().toLowerCase();
+                const firstNameCompare = firstNameA.localeCompare(firstNameB);
+                if (firstNameCompare !== 0) return firstNameCompare;
+                
+                const lastNameA = String(getEtternavnValue(a)).trim().toLowerCase();
+                const lastNameB = String(getEtternavnValue(b)).trim().toLowerCase();
+                return lastNameA.localeCompare(lastNameB);
+            } else {
+                const lastNameA = String(getEtternavnValue(a)).trim().toLowerCase();
+                const lastNameB = String(getEtternavnValue(b)).trim().toLowerCase();
+                const lastNameCompare = lastNameA.localeCompare(lastNameB);
+                if (lastNameCompare !== 0) return lastNameCompare;
+                
+                const firstNameA = String(getFornavnValue(a)).trim().toLowerCase();
+                const firstNameB = String(getFornavnValue(b)).trim().toLowerCase();
+                return firstNameA.localeCompare(firstNameB);
+            }
+        }
+
+        // Helper function to create a table cell with text
+        function createTextCell(text, options = {}) {
+            const { Paragraph, TableCell, TextRun, VerticalAlign } = docx;
+            const {
+                bold = false,
+                size = 26,
+                font = 'Calibri',
+                verticalAlign = VerticalAlign.CENTER,
+                borders = null,
+                width = null
+            } = options;
+
+            const cellConfig = {
+                children: [new Paragraph({
+                    children: [new TextRun({ text, bold, size, font })]
+                })],
+                verticalAlign
+            };
+
+            if (borders) cellConfig.borders = borders;
+            if (width) cellConfig.width = width;
+
+            return new TableCell(cellConfig);
+        }
+
         async function generateRoomTablesWithFilter(onlyTilrettelegging) {
             if (!currentData) return;
 
@@ -1361,17 +1422,7 @@
 
             if (onlyTilrettelegging) {
                 const hasTilretteColumn = currentData.length > 0 && currentData.some(student => {
-                    return Object.prototype.hasOwnProperty.call(student, 'Eksamenstilrettelegginger')
-                        || Object.prototype.hasOwnProperty.call(student, 'Eksamenstilretteleggingar') // Nynorsk
-                        || Object.prototype.hasOwnProperty.call(student, 'Exam accommodations') // English
-                        || Object.prototype.hasOwnProperty.call(student, 'Facilitations') // English alternative
-                        || Object.prototype.hasOwnProperty.call(student, 'Eksamensstilrettelegginger')
-                        || Object.prototype.hasOwnProperty.call(student, 'eksamenstilrettelegginger')
-                        || Object.prototype.hasOwnProperty.call(student, 'eksamenstilretteleggingar') // Nynorsk lowercase
-                        || Object.prototype.hasOwnProperty.call(student, 'exam accommodations') // English
-                        || Object.prototype.hasOwnProperty.call(student, 'facilitations') // English alternative lowercase
-                        || Object.prototype.hasOwnProperty.call(student, 'Eksamenstilrettelegging')
-                        || Object.prototype.hasOwnProperty.call(student, 'eksamenstilrettelegging');
+                    return getTilretteleggingValue(student) !== undefined && getTilretteleggingValue(student) !== '';
                 });
 
                 if (!hasTilretteColumn) {
@@ -1429,27 +1480,7 @@
 
                 // Sort students within each room by name
                 Object.keys(roomGroups).forEach(room => {
-                    roomGroups[room].sort((a, b) => {
-                        if (sortPreference === 'fornavn') {
-                            const firstNameA = String(getFornavnValue(a)).trim().toLowerCase();
-                            const firstNameB = String(getFornavnValue(b)).trim().toLowerCase();
-                            const firstNameCompare = firstNameA.localeCompare(firstNameB);
-                            if (firstNameCompare !== 0) return firstNameCompare;
-                            
-                            const lastNameA = String(getEtternavnValue(a)).trim().toLowerCase();
-                            const lastNameB = String(getEtternavnValue(b)).trim().toLowerCase();
-                            return lastNameA.localeCompare(lastNameB);
-                        } else {
-                            const lastNameA = String(getEtternavnValue(a)).trim().toLowerCase();
-                            const lastNameB = String(getEtternavnValue(b)).trim().toLowerCase();
-                            const lastNameCompare = lastNameA.localeCompare(lastNameB);
-                            if (lastNameCompare !== 0) return lastNameCompare;
-                            
-                            const firstNameA = String(getFornavnValue(a)).trim().toLowerCase();
-                            const firstNameB = String(getFornavnValue(b)).trim().toLowerCase();
-                            return firstNameA.localeCompare(firstNameB);
-                        }
-                    });
+                    roomGroups[room].sort(compareStudentsByName);
                 });
 
                 // Sort rooms numerically
@@ -1478,17 +1509,9 @@
                         return tilrette.skjermetPlass;
                     });
 
-                    // Define thick border style for tilrettelegging tables
-                    const thickBorder = {
-                        style: BorderStyle.SINGLE,
-                        size: 20,
-                        color: '000000'
-                    };
-                    const thinBorder = {
-                        style: BorderStyle.SINGLE,
-                        size: 4,
-                        color: 'CCCCCC'
-                    };
+                    // Use global border constants
+                    const thickBorder = THICK_BORDER;
+                    const thinBorder = THIN_BORDER;
 
                     // Add page break before each room (except first)
                     if (roomIndex > 0) {
@@ -2068,35 +2091,15 @@
                         return selectedDates.has(date);
                     })
                     .sort((a, b) => {
-                        const roomA = String(a['Rom']).trim();
-                        const roomB = String(b['Rom']).trim();
+                        const roomA = String(getRoomValue(a)).trim();
+                        const roomB = String(getRoomValue(b)).trim();
                         
                         // Compare room numbers
                         const roomCompare = roomA.localeCompare(roomB, undefined, { numeric: true });
                         if (roomCompare !== 0) return roomCompare;
                         
-                        // If same room, compare by selected field
-                        if (sortPreference === 'fornavn') {
-                            // Sort by first name, then last name
-                            const firstNameA = String(a['Fornavn']).trim().toLowerCase();
-                            const firstNameB = String(b['Fornavn']).trim().toLowerCase();
-                            const firstNameCompare = firstNameA.localeCompare(firstNameB);
-                            if (firstNameCompare !== 0) return firstNameCompare;
-                            
-                            const lastNameA = String(a['Etternavn']).trim().toLowerCase();
-                            const lastNameB = String(b['Etternavn']).trim().toLowerCase();
-                            return lastNameA.localeCompare(lastNameB);
-                        } else {
-                            // Sort by last name, then first name
-                            const lastNameA = String(a['Etternavn']).trim().toLowerCase();
-                            const lastNameB = String(b['Etternavn']).trim().toLowerCase();
-                            const lastNameCompare = lastNameA.localeCompare(lastNameB);
-                            if (lastNameCompare !== 0) return lastNameCompare;
-                            
-                            const firstNameA = String(a['Fornavn']).trim().toLowerCase();
-                            const firstNameB = String(b['Fornavn']).trim().toLowerCase();
-                            return firstNameA.localeCompare(firstNameB);
-                        }
+                        // If same room, compare by name using shared comparator
+                        return compareStudentsByName(a, b);
                     });
 
                 const children = [];
@@ -2447,20 +2450,8 @@
                         const roomCompare = roomA.localeCompare(roomB, undefined, { numeric: true });
                         if (roomCompare !== 0) return roomCompare;
                         
-                        // Then sort by Name
-                        if (sortPreference === 'fornavn') {
-                            const firstNameCompare = String(getFornavnValue(a.student)).trim().toLowerCase()
-                                .localeCompare(String(getFornavnValue(b.student)).trim().toLowerCase());
-                            if (firstNameCompare !== 0) return firstNameCompare;
-                            return String(getEtternavnValue(a.student)).trim().toLowerCase()
-                                .localeCompare(String(getEtternavnValue(b.student)).trim().toLowerCase());
-                        } else {
-                            const lastNameCompare = String(getEtternavnValue(a.student)).trim().toLowerCase()
-                                .localeCompare(String(getEtternavnValue(b.student)).trim().toLowerCase());
-                            if (lastNameCompare !== 0) return lastNameCompare;
-                            return String(getFornavnValue(a.student)).trim().toLowerCase()
-                                .localeCompare(String(getFornavnValue(b.student)).trim().toLowerCase());
-                        }
+                        // Then sort by Name using shared comparator
+                        return compareStudentsByName(a.student, b.student);
                     });
                 } else {
                     // Sort by: Dato -> Rom -> Name -> Del
@@ -2476,22 +2467,9 @@
                         const roomCompare = roomA.localeCompare(roomB, undefined, { numeric: true });
                         if (roomCompare !== 0) return roomCompare;
                         
-                        // Then sort by Name
-                        if (sortPreference === 'fornavn') {
-                            const firstNameCompare = String(getFornavnValue(a.student)).trim().toLowerCase()
-                                .localeCompare(String(getFornavnValue(b.student)).trim().toLowerCase());
-                            if (firstNameCompare !== 0) return firstNameCompare;
-                            const lastNameCompare = String(getEtternavnValue(a.student)).trim().toLowerCase()
-                                .localeCompare(String(getEtternavnValue(b.student)).trim().toLowerCase());
-                            if (lastNameCompare !== 0) return lastNameCompare;
-                        } else {
-                            const lastNameCompare = String(getEtternavnValue(a.student)).trim().toLowerCase()
-                                .localeCompare(String(getEtternavnValue(b.student)).trim().toLowerCase());
-                            if (lastNameCompare !== 0) return lastNameCompare;
-                            const firstNameCompare = String(getFornavnValue(a.student)).trim().toLowerCase()
-                                .localeCompare(String(getFornavnValue(b.student)).trim().toLowerCase());
-                            if (firstNameCompare !== 0) return firstNameCompare;
-                        }
+                        // Then sort by Name using shared comparator
+                        const nameCompare = compareStudentsByName(a.student, b.student);
+                        if (nameCompare !== 0) return nameCompare;
                         
                         // Then sort by Del
                         return a.part.suffix.localeCompare(b.part.suffix);
