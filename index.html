@@ -2668,7 +2668,22 @@
                         size: 28,
                         font: 'Calibri'
                     })],
-                    spacing: { before: 200, after: 100 }
+                    spacing: { before: 200, after: 50 }
+                }));
+
+                // Add Udir link
+                const udirlLink = `https://kandidat.udir.no/eksamensinfo/${fagkode}`;
+                children.push(new docx.Paragraph({
+                    children: [new docx.TextRun({
+                        text: udirlLink,
+                        color: '0563C1',
+                        underline: {
+                            style: 'single'
+                        },
+                        size: 20,
+                        font: 'Calibri'
+                    })],
+                    spacing: { after: 100 }
                 }));
 
                 const hasTiming = info && (info.del1 || info.del2);
