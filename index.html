@@ -2765,7 +2765,20 @@
             if (!matches) {
                 return text ? [text.trim()] : [];
             }
-            return matches.map(part => part.trim()).filter(Boolean);
+            let sentences = matches.map(part => part.trim()).filter(Boolean);
+            
+            // Combine short sentences with the previous one to avoid fragmentation
+            const minLength = 50; // Minimum length for a standalone sentence
+            const combined = [];
+            for (let i = 0; i < sentences.length; i++) {
+                if (i > 0 && sentences[i].length < minLength) {
+                    // Combine short sentence with previous one
+                    combined[combined.length - 1] += ' ' + sentences[i];
+                } else {
+                    combined.push(sentences[i]);
+                }
+            }
+            return combined;
         }
 
         function generateTimeHelpContent(date, room, fagkoder, fagkodeInfo) {
@@ -3012,16 +3025,15 @@
                                     spacing: { after: 50 }
                                 }));
 
-                                // Add rest as sub-item with dash
+                                // Add rest as sub-item with bullet only if there's content after colon
                                 if (afterColon) {
                                     children.push(new docx.Paragraph({
                                         children: [new docx.TextRun({
-                                            text: '- ' + afterColon,
+                                            text: '• ' + afterColon,
                                             size: 22,
                                             font: 'Calibri'
                                         })],
-                                        spacing: { after: 50 },
-                                        indent: { left: 360 }
+                                        spacing: { after: 50 }
                                     }));
                                 }
                             } else {
