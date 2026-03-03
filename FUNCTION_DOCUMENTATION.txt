@@ -1,0 +1,570 @@
+================================================================================
+EXAM PLANNING APPLICATION - FUNCTION DOCUMENTATION
+================================================================================
+Created: March 3, 2026
+Document Purpose: Technical overview of all functions and GDPR/personal data handling
+
+================================================================================
+1. APPLICATION OVERVIEW
+================================================================================
+
+Name: Generator for eksamensskjema (Exam Planning/Execution Tool)
+Type: Single-Page Application (SPA) - runs entirely in the browser
+Language: HTML5, CSS3, JavaScript (using XLSX.js and docx.js libraries)
+Primary Purpose: Reading Excel files with student exam data and generating
+                 Word documents for exam management
+
+================================================================================
+2. DATA FLOW OVERVIEW
+================================================================================
+
+Step 1: User uploads Excel file (.xlsx/.xls) containing exam registration data
+        - File is read ONLY in browser memory (never uploaded to server)
+        
+Step 2: Data validation occurs locally
+        - Checks for required columns (supporting Bokmål, Nynorsk, English)
+        - Filters by exam form (Skriftlig/Skriftleg/Written exams only)
+        - Identifies duplicates and missing data
+        
+Step 3: User selects exam dates to process
+        - Only selected data is exported
+        
+Step 4: User generates documents in chosen formats
+        - Documents are created in browser memory
+        - Documents are immediately downloaded to user's computer
+        
+Step 5: Session ends
+        - All data retained only in browser memory during session
+        - No persistence to disk or server
+        - Original Excel file remains user's responsibility
+
+================================================================================
+3. GDPR AND PERSONAL DATA HANDLING - KEY POINTS
+================================================================================
+
+✓ DATA LOCATION AND PROCESSING:
+  - 100% client-side processing (runs in user's web browser)
+  - Exam data NEVER sent to any server
+  - No backend database or external storage
+  - No API calls with personal data
+  - Data exists only in browser RAM during session
+
+✓ DATA RETENTION:
+  - Data stays in browser memory only during active session
+  - Closing browser tab clears all data
+  - User retains full control of original Excel file
+  - Generated documents saved only to user's computer
+  - No logs of sensitive data maintained on server
+
+✓ NO THIRD-PARTY SHARING:
+  - No tracking services
+  - No analytics with personal data
+  - No data sharing with external services
+  - External calls only: Reading exam info from udir.no (no personal data sent)
+
+✓ EXTERNAL DATA SOURCES:
+  - examDatabaseCompact.js: Exam codes, times, accommodation rules from Udir
+    (This is reference data ONLY - not personal information)
+  - Udir links generated: https://kandidat.udir.no/eksamensinfo/[fagkode]
+    (No personal data transmitted)
+
+✓ USER CONTROL:
+  - Users upload their own files (not forced upload)
+  - Users choose which dates/students to export
+  - Users choose output format (Word, Excel)
+  - Users delete original files as needed
+  - No forced data retention
+
+================================================================================
+4. PERSONAL DATA ELEMENTS IN APPLICATION
+================================================================================
+
+The application processes these personal data fields from Excel:
+
+Core Personal Data:
+- Fornavn (First name)
+- Etternavn (Last name) / Navn (Full name)
+- PAS kandidatnummer (National student ID)
+- Telefon (Phone number) [optional]
+
+Exam-Related Data:
+- Eksamensrom (Exam room)
+- Fagkode (Subject code)
+- Fagnavn (Subject name)
+- Eksamensdato (Exam date)
+
+Data Processing Rules:
+- Phone numbers are cleaned/formatted but not validated against external services
+- Names are used for sorting and document generation only
+- Student IDs are included in output documents as required
+- No encryption of data in RAM (standard web browser behavior)
+- No cross-referencing with external registries
+
+================================================================================
+5. COMPLETE FUNCTION REFERENCE
+================================================================================
+
+--- FILE INPUT AND VALIDATION ---
+
+handleFile(file)
+  Purpose: Process uploaded Excel file
+  Parameters: file (File object)
+  Actions:
+    - Validates file type (.xlsx, .xls only)
+    - Reads file into browser memory using XLSX library
+    - Checks for required columns (multiple language variants supported)
+    - Filters for written exams only (if Form column exists)
+    - Validates no duplicate candidates on same exam date
+    - Does NOT: upload to server, store file, validate against external systems
+  GDPR Note: File stays in memory, never persisted
+
+checkDuplicateKandidates(data)
+  Purpose: Identify candidates appearing multiple times on same exam date
+  Actions:
+    - Groups candidates by (PAS number + exam date)
+    - Flags duplicates as warnings to user
+    - Does NOT remove data, only alerts user
+  GDPR Note: Warning is local, not logged
+
+updateWarnings()
+  Purpose: Update UI with data validation warnings
+  Actions: Displays duplicate and missing room warnings
+  GDPR Note: Purely local UI update
+
+--- DATE AND DISPLAY PROCESSING ---
+
+displayDateOptions(data)
+  Purpose: Extract unique exam dates and show selection checkboxes
+  Actions:
+    - Creates week numbers and date labels
+    - Generates UI checkboxes for date selection
+    - Tracks selected dates in Set (selectedDates)
+  GDPR Note: Local UI state only
+
+formatDate(dateValue)
+  Purpose: Normalize various date formats to DD.MM.YYYY
+  Accepts: Excel date serial, string, or Date object
+  Returns: Standardized date string
+  GDPR Note: Utility function, no external calls
+
+formatDateFromObj(dateObj)
+  Purpose: Format JavaScript Date object to DD.MM.YYYY
+  Returns: String representation
+
+getDateInfo(dateStr)
+  Purpose: Parse date string into components
+  Returns: Object with year, month, day, weekNumber
+
+getWeekNumber(date)
+  Purpose: Calculate ISO week number for date
+  Returns: Integer (1-53)
+
+--- STUDENT DATA EXTRACTION ---
+
+getDisplayName(student)
+  Purpose: Return formatted student name based on sort preference
+  Parameters: student (data row object)
+  Actions:
+    - Checks sort preference (fornavn vs etternavn)
+    - Returns either "First Last" or "Last, First" format
+  GDPR Note: Formatting only, no external validation
+
+getFornavnValue(student)
+  Purpose: Extract first name from student record
+  Supports: 'Fornavn', 'Fornamn', 'Given name' columns
+
+getEtternavnValue(student)
+  Purpose: Extract last name from student record
+  Supports: 'Etternavn', 'Etternamn', 'Family name' columns
+
+getRoomValue(student)
+  Purpose: Extract exam room number
+  Supports: 'Eksamensrom', 'Rom', 'Room name' columns
+
+getFagkodeValue(student)
+  Purpose: Extract subject code
+  Supports: 'Fagkode', 'Subject code' columns
+
+getFagnavnValue(student)
+  Purpose: Extract subject name
+  Supports: 'Fagnavn', 'Fagnamn', 'Subject name' columns
+
+getEksamensdatoValue(student)
+  Purpose: Extract exam date
+  Supports: 'Eksamensdato', 'Exam date' columns
+
+getPASKandidatnummerValue(student)
+  Purpose: Extract student ID number
+  Supports: 'PAS kandidatnummer', 'PAS candidate number' columns
+
+getTelefonValue(student)
+  Purpose: Extract phone number
+  Supports: 'Telefon', 'Telefonnummer', 'Phone' columns
+  GDPR Note: Personal data element, only used locally
+
+cleanPhoneNumber(phone)
+  Purpose: Format phone number (remove spaces/characters)
+  Actions: Removes common formatting characters
+  GDPR Note: Format normalization only, not validated against registries
+
+--- DATA SORTING AND COMPARISON ---
+
+compareStudentsByName(a, b, preference)
+  Purpose: Comparator function for sorting student lists
+  Parameters: two student objects, sort preference
+  Actions:
+    - First sorts by room number (numerically)
+    - Then by selected name field (fornavn or etternavn)
+  GDPR Note: Sorting utility, completely local
+
+shortenSubject(fagkode, fagnavn)
+  Purpose: Create shortened display text for subjects
+  Returns: Truncated subject name if too long
+
+populateRoomCopiesList(data)
+  Purpose: Generate UI for advanced per-room copy quantity customization
+  Actions:
+    - Creates collapsible list of rooms
+    - Allows setting copy counts per room
+    - Filters by selected dates
+  GDPR Note: UI state only, user preferences local
+
+--- DOCUMENT GENERATION ---
+
+generateDocument() [async]
+  Purpose: Generate individual student exam cards (Word format)
+  Prerequisite: Student data loaded and dates selected
+  Actions:
+    - Filters data by selected dates
+    - Creates one A4 page per student
+    - Includes: exam date, room, name, subject codes
+    - Generates in browser using docx.js library
+    - Downloads as 'student_exam_cards.docx'
+  GDPR Note: No server upload, document created and downloaded locally
+
+generateRoomTables() [async]
+  Purpose: Generate room lists (Word format)
+  Actions:
+    - Groups students by date and room
+    - Creates table format with student details
+    - One table per room/date combination
+    - Includes copy count options per room
+    - Downloads as 'Kandidatlister.docx'
+  GDPR Note: Local generation only
+
+generateRoomTablesExcel() [async]
+  Purpose: Generate room lists in Excel format
+  Actions:
+    - Same grouping as Word version
+    - Creates multi-sheet Excel workbook (one sheet per room)
+    - Downloads as 'Kandidatlister.xlsx'
+  GDPR Note: Local generation only
+
+generateRoomTablesWithFilter(onlyTilrettelegging) [async]
+  Purpose: Shared function for generating room lists (Word)
+  Parameters: boolean flag for including only accommodations data
+  Actions:
+    - Filters data by selected dates
+    - Sorts by room then by name
+    - Builds Word document with tables
+    - Calls saveAs from FileSaver.js
+  GDPR Note: No persistence beyond download
+
+generateRoomTablesExcelWithFilter(onlyTilrettelegging) [async]
+  Purpose: Shared function for generating room lists (Excel)
+  Parameters: boolean flag for including only accommodations data
+  Actions:
+    - Creates Excel workbook with multiple sheets
+    - One sheet per room with selected students
+    - Copies per room taken from roomCopies object
+  GDPR Note: No persistence beyond download
+
+generateTilretteTables() [async]
+  Purpose: Generate accommodations lists (Word format)
+  Actions: Calls generateRoomTablesWithFilter(true)
+
+generateTilretteTablesExcel() [async]
+  Purpose: Generate accommodations lists (Excel format)
+  Actions: Calls generateRoomTablesExcelWithFilter(true)
+
+generateTimeHelp() [async]
+  Purpose: Generate exam times and allowed aids document (Word format)
+  Actions:
+    - Creates per-room document with exam schedule
+    - Lists exam times and accommodation rules
+    - Includes links to Udir exam info pages
+    - Downloads as 'Tid_og_hjelpemidler.docx'
+  GDPR Note: Combines student exam data with public Udir data
+             no personal data sent to external sites
+
+generateTimeHelpContent(date, room, fagkoder, fagkodeInfo)
+  Purpose: Build document content for exam times and aids
+  Parameters:
+    - date: exam date string
+    - room: room number
+    - fagkoder: array of subject codes
+    - fagkodeInfo: object with exam information per subject
+  Actions:
+    - Creates title paragraph with disclaimer
+    - For each subject: heading with subject code + name
+    - Adds Udir link for exam information
+    - Lists exam times (normal and extended)
+    - Lists allowed aids/accommodations
+    - Formats text into bullet points
+  GDPR Note: Uses only aggregated exam data, no individual student data
+
+generateQRCodeSheets() [async]
+  Purpose: Generate QR code sheets for two-part exams
+  Actions:
+    - Identifies two-part exams from selected dates
+    - Creates one QR code per exam/room combination
+    - Generates PDF with codes
+    - Downloads as 'QR_koder.pdf'
+  GDPR Note: Subject-based, no individual student data in QR codes
+
+--- EXAM INFORMATION LOOKUP ---
+
+fetchExamInfo(fagkode)
+  Purpose: Retrieve exam schedule and accommodation rules
+  Parameters: fagkode (subject code)
+  Source: Local examDatabaseCompact.js (no external calls)
+  Returns: Object with
+    - fagkode: subject code
+    - del1: part 1 timing (or null)
+    - del2: part 2 timing (or null)
+    - hjelpemidler: accommodation rules text
+    - sourceUrl: reference to Udir page (informational only)
+  GDPR Note: Reference data only, no personal data lookup
+
+timeToMinutes(time)
+  Purpose: Convert HH:MM time string to minutes since midnight
+  Returns: Integer or null
+
+toPart(start, end)
+  Purpose: Create exam part object with timing data
+  Returns: Object with start, end, startMinutes, endMinutes
+
+--- TEXT PROCESSING ---
+
+splitIntoSentences(text)
+  Purpose: Split accommodation rules text into readable bullet points
+  Actions:
+    - Detects sentence boundaries
+    - Combines short sentences to avoid fragmentation
+    - Returns array of sentence strings
+  GDPR Note: Text formatting only
+
+--- UI STATE MANAGEMENT ---
+
+showStatus(message, type)
+  Purpose: Display status/error messages to user
+  Parameters: message text, type ('success', 'error', 'processing')
+  Actions: Updates UI status element
+
+--- EVENT LISTENERS AND STATE ---
+
+The application maintains these state variables:
+
+currentData
+  Type: Array of student records
+  Content: Exam registration data from uploaded Excel
+  Scope: Session only
+  Cleared: When user removes file
+
+selectedDates
+  Type: Set of date strings
+  Content: User-selected exam dates
+  Scope: Session only
+
+selectedFagkodes
+  Type: Set of subject codes
+  Content: User-selected two-part exam subjects (QR codes)
+  Scope: Session only
+
+roomCopies
+  Type: Object {roomNumber: copyCount}
+  Content: Custom copy quantities per room
+  Scope: Session only
+
+sortPreference
+  Type: String ('fornavn' or 'etternavn')
+  Content: User's chosen sorting order for student names
+  Scope: Session only (not persisted to localStorage)
+
+================================================================================
+6. SECURITY AND PRIVACY MEASURES
+================================================================================
+
+✓ CLIENT-SIDE ONLY:
+  - No server backend for data processing
+  - No database storage of personal information
+  - No cloud synchronization
+  - No session logging with sensitive data
+
+✓ NO DATA PERSISTENCE:
+  - Browser RAM only
+  - Cleared on browser close
+  - No localStorage or cookies with personal data
+  - HTML5 FileReader API used (standard, no upload)
+
+✓ NO EXTERNAL DATA TRANSMISSION:
+  - Exam data never leaves user's browser
+  - Only external call: Reading Udir exam database
+    (contains ONLY subject codes, times, rules - no student data)
+  - Document generation 100% local using docx.js library
+  - Downloads handled via browser's saveAs feature
+
+✓ FILE HANDLING:
+  - User provides Excel file (.xlsx/.xls)
+  - File read once into memory
+  - User responsible for file cleanup
+  - Original file never modified
+
+✓ WHAT IS NEVER COLLECTED:
+  - Student names/IDs are not sent anywhere
+  - Phone numbers are not validated externally
+  - No analytics tracking
+  - No error reporting with data
+  - No cookies with personal data
+  - No account/login system
+
+================================================================================
+7. GDPR COMPLIANCE ASSESSMENT
+================================================================================
+
+LAWFUL BASIS:
+  - Educational institution legitimate interest (exam management)
+  - Data controller responsibility: Educational institution running exams
+  - This tool is a processor aid (helping controller manage controlled data)
+
+PURPOSE:
+  - Exam organization and documentation
+  - Accommodation/accessibility tracking
+  - Student schedule generation
+
+DATA MINIMIZATION:
+  - Only required exam data collected: name, ID, date, room, subject
+  - Optional: phone number and accommodation details
+  - Data used only for specified purpose
+  - No purpose creep (sorting, formatting local only)
+
+STORAGE LIMITATION:
+  - Data retained only during session
+  - User controls original file (responsibility to delete)
+  - No data stored on application infrastructure
+  - Session data cleared on browser close
+
+SECURITY:
+  - HTTPS enforced (browser standard)
+  - No transmission of personal data to servers
+  - Client-side processing prevents interception
+  - Exam data only in trusted browser memory
+
+TRANSPARENCY:
+  - This documentation provided
+  - Application behavior visible (client-side code)
+  - Source files available for inspection
+
+DATA SUBJECT RIGHTS:
+  - Erasure: User deletes original Excel file
+  - Access: User retains original data
+  - Portability: Data in standard Excel format
+  - Rectification: User modifies Excel before upload
+
+BREACH RISK:
+  - Minimal: Data never leaves user's computer
+  - Institutional security responsibility:
+    Excel file storage, document storage, network security
+
+RECOMMENDATION FOR IMPLEMENTATION:
+  - Deploy application on HTTPS-only server
+  - Include this documentation with application
+  - Add user-facing privacy statement in application
+  - Ensure backup/deletion procedures for generated documents
+  - Institution should:
+    1) Maintain backup of original Excel files
+    2) Securely store generated documents
+    3) Delete sensitive files after exam period
+    4) Keep audit logs of who accessed the tool
+    5) Train users on secure document handling
+
+================================================================================
+8. TECHNICAL DEPENDENCIES
+================================================================================
+
+External Libraries (client-side):
+  - XLSX.js: Excel file reading (https://sheetjs.com/)
+  - docx.js: Word document generation (local client library)
+  - FileSaver.js: Browser download support
+
+Data Files:
+  - examDatabaseCompact.js: Subject codes, times, rules from Udir
+  - examTextDictionary: Accommodation rules text strings
+
+Document Generation:
+  - All Word/Excel generation happens in browser memory
+  - No server-side document processing
+
+External Data Sources:
+  - Udir exam info links (https://kandidat.udir.no/eksamensinfo/)
+    Information only, no personal data sent
+
+================================================================================
+9. NOTES FOR AUDITORS AND COMPLIANCE TEAMS
+================================================================================
+
+Key Points to Verify:
+1. ✓ Application executes entirely in browser (check browser DevTools Network tab)
+2. ✓ No data transmission during operation (should see only Udir reads)
+3. ✓ Files generated locally and downloaded (check browser downloads)
+4. ✓ Code is readable and verifiable (single-file architecture)
+5. ✓ External calls limited to public Udir API (can be traced)
+
+Testing Recommendations:
+1. Upload test Excel file with mock data
+2. Monitor network traffic - should see NO transmission of student data
+3. Generate documents - downloaded to local computer, not transmitted
+4. Close browser/clear cache - data should be unrecoverable
+5. Inspect source code - verify no hidden API calls or logging
+
+Code Inspection:
+- All code is visible (no minification by default)
+- Search for "fetch(", "XMLHttpRequest", "localStorage" - limited usage
+- Search for "server", "database", "api" - context is reference data only
+- All personal data handling is local and temporary
+
+================================================================================
+10. RECOMMENDATIONS FOR INSTITUTIONS USING THIS TOOL
+================================================================================
+
+BEFORE USE:
+  □ Review this documentation with IT/compliance team
+  □ Conduct privacy impact assessment
+  □ Ensure HTTPS deployment
+  □ Train exam coordinators on secure handling
+  □ Establish document retention/deletion procedures
+
+DURING USE:
+  □ Use only with official exam data sources
+  □ Limit access to authorized exam coordinators
+  □ Monitor who accesses the tool
+  □ Ensure Excel files handled securely
+  □ Keep generated documents in secure location
+
+AFTER USE:
+  □ Delete generated documents after exam period
+  □ Delete original Excel files when no longer needed
+  □ Keep audit logs of tool usage
+  □ Maintain backup of exam records as required by law
+
+SECURITY MEASURES NOT INCLUDED IN THIS TOOL:
+  - Authentication/authorization (institution responsibility)
+  - Audit logging (institution responsibility)
+  - Network security/HTTPS (institution responsibility)
+  - File encryption (institution responsibility)
+  - Access control (institution responsibility)
+  - Document retention policies (institution responsibility)
+
+================================================================================
+END OF DOCUMENTATION
+================================================================================
