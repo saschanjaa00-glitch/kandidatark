@@ -564,15 +564,44 @@
         </div>
 
         <div id="printRoomContainer" style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
-            <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Kandidatlister</h3>
-            <div style="display: flex; flex-direction: column; gap: 15px;">
-                <div style="display: flex; align-items: center; gap: 10px;">
-                    <label for="copiesPerRoom" style="color: #222; font-size: 14px; font-weight: 500;">Kopier per rom:</label>
-                    <input id="copiesPerRoom" type="number" min="1" value="1" style="width: 80px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+            <h3 style="color: #222; margin-bottom: 15px; font-size: 15px; font-weight: 600;">Kandidatlister / Tilretteleggingslister</h3>
+            
+            <div style="display: flex; flex-direction: column; gap: 20px;">
+                <!-- Kandidatlister section -->
+                <div>
+                    <h4 style="color: #222; margin-bottom: 10px; font-size: 13px; font-weight: 600;">Kandidatlister</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <button class="btn btn-kandidatark" id="generateTablesBtn" disabled style="padding: 10px 16px; font-size: 13px;">Lag Kandidatlister (.docx)</button>
+                        <button class="btn btn-kandidatark" id="generateTablesExcelBtn" disabled style="padding: 10px 16px; font-size: 13px;">Lag Kandidatlister (.xlsx)</button>
+                    </div>
                 </div>
-                <div class="btn-group">
-                    <button class="btn btn-kandidatark" id="generateTablesBtn" disabled>Generer kandidatlister per rom</button>
-                    <button class="btn btn-kandidatark" id="generateTilretteTablesBtn" disabled>Generer liste over tilrettelegginger</button>
+                
+                <!-- Tilretteleggingslister section -->
+                <div>
+                    <h4 style="color: #222; margin-bottom: 10px; font-size: 13px; font-weight: 600;">Tilretteleggingslister</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <button class="btn btn-kandidatark" id="generateTilretteTablesBtn" disabled style="padding: 10px 16px; font-size: 13px;">Lag Tilretteleggingslister (.docx)</button>
+                        <button class="btn btn-kandidatark" id="generateTilretteTablesExcelBtn" disabled style="padding: 10px 16px; font-size: 13px;">Lag Tilretteleggingslister (.xlsx)</button>
+                    </div>
+                </div>
+                
+                <!-- Kopier per rom option -->
+                <div style="display: flex; flex-direction: column; gap: 10px; padding-top: 10px; border-top: 1px solid #ddd;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <label for="copiesPerRoom" style="color: #222; font-size: 14px; font-weight: 500;">Kopier per rom:</label>
+                        <input id="copiesPerRoom" type="number" min="1" value="1" style="width: 80px; padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px;">
+                    </div>
+                    
+                    <!-- Advanced per-room copies -->
+                    <div style="border-top: 1px solid #e0e0e0; padding-top: 10px;">
+                        <div style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;" onclick="const advPanel = document.getElementById('advancedCopiesPanel'); advPanel.style.display = advPanel.style.display === 'none' ? 'block' : 'none'; this.querySelector('span').textContent = advPanel.style.display === 'none' ? '▶' : '▼';">
+                            <span style="font-size: 12px; color: #666;">▶</span>
+                            <span style="color: #666; font-size: 13px; font-weight: 600;">Avansert: Kopier per rom</span>
+                        </div>
+                        <div id="advancedCopiesPanel" style="display: none; margin-top: 10px; background: #f5f5f5; padding: 10px; border-radius: 4px;">
+                            <div id="roomCopiesList" style="display: flex; flex-direction: column; gap: 8px; max-height: 300px; overflow-y: auto;"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -666,7 +695,9 @@
         const sortEtternavnRadio = document.getElementById('sortEtternavn');
         const copiesPerRoomInput = document.getElementById('copiesPerRoom');
         const generateTablesBtn = document.getElementById('generateTablesBtn');
+        const generateTablesExcelBtn = document.getElementById('generateTablesExcelBtn');
         const generateTilretteTablesBtn = document.getElementById('generateTilretteTablesBtn');
+        const generateTilretteTablesExcelBtn = document.getElementById('generateTilretteTablesExcelBtn');
         const generateTimeHelpBtn = document.getElementById('generateTimeHelpBtn');
         const generateQRBtn = document.getElementById('generateQRBtn');
         const includeDel1Checkbox = document.getElementById('includeDel1');
@@ -677,6 +708,7 @@
         const twoPartExamsInfo = document.getElementById('twoPartExamsInfo');
         const twoPartExamsList = document.getElementById('twoPartExamsList');
         const selectedFagkodes = new Set(); // Track which fagkodes are selected for QR generation
+        const roomCopies = {}; // Track custom copy counts per room
         const removeFileBtn = document.getElementById('removeFileBtn');
         const selectAllDatesBtn = document.getElementById('selectAllDatesBtn');
         const duplicatesWarning = document.getElementById('duplicatesWarning');
@@ -699,7 +731,9 @@
             duplicatesList.innerHTML = '';
             generateBtn.disabled = true;
             generateTablesBtn.disabled = true;
+            generateTablesExcelBtn.disabled = true;
             generateTilretteTablesBtn.disabled = true;
+            generateTilretteTablesExcelBtn.disabled = true;
             fileInput.value = '';
             status.className = 'status';
         });
@@ -773,7 +807,9 @@
         // Generate button
         generateBtn.addEventListener('click', generateDocument);
         generateTablesBtn.addEventListener('click', generateRoomTables);
+        generateTablesExcelBtn.addEventListener('click', generateRoomTablesExcel);
         generateTilretteTablesBtn.addEventListener('click', generateTilretteTables);
+        generateTilretteTablesExcelBtn.addEventListener('click', generateTilretteTablesExcel);
         generateTimeHelpBtn.addEventListener('click', generateTimeHelp);
         generateQRBtn.addEventListener('click', generateQRCodeSheets);
 
@@ -860,6 +896,9 @@
                     // Extract and display unique dates
                     displayDateOptions(filteredData);
                     
+                    // Populate room copies list for advanced options
+                    populateRoomCopiesList(filteredData);
+                    
                     // Update warnings (must be after displayDateOptions to have selectedDates populated)
                     updateWarnings();
                     
@@ -868,7 +907,9 @@
                     
                     generateBtn.disabled = false;
                     generateTablesBtn.disabled = false;
+                    generateTablesExcelBtn.disabled = false;
                     generateTilretteTablesBtn.disabled = false;
+                    generateTilretteTablesExcelBtn.disabled = false;
                     generateTimeHelpBtn.disabled = false;
                     generateQRBtn.disabled = false;
 
@@ -1164,6 +1205,7 @@
                                 cell.style.background = '#f0f0f0';
                             }
                             updateTwoPartExamsInfo();
+                            populateRoomCopiesList(currentData); // Update room list when dates change
                             updateWarnings(); // Update warnings when dates change
                         });
 
@@ -1205,6 +1247,62 @@
             }
 
             datesContainer.style.display = 'block';
+        }
+
+        function populateRoomCopiesList(data) {
+            // Get unique rooms for selected dates only
+            const rooms = new Set();
+            data.forEach(student => {
+                const date = formatDate(getEksamensdatoValue(student));
+                if (selectedDates.has(date)) {
+                    const room = String(getRoomValue(student)).trim();
+                    if (room) rooms.add(room);
+                }
+            });
+            
+            // Sort rooms numerically
+            const sortedRooms = Array.from(rooms).sort((a, b) => {
+                return parseInt(a) - parseInt(b) || a.localeCompare(b);
+            });
+            
+            // Populate the room copies list
+            const roomCopiesList = document.getElementById('roomCopiesList');
+            roomCopiesList.innerHTML = '';
+            
+            sortedRooms.forEach(room => {
+                const rowDiv = document.createElement('div');
+                rowDiv.style.display = 'flex';
+                rowDiv.style.alignItems = 'center';
+                rowDiv.style.gap = '10px';
+                rowDiv.style.paddingBottom = '6px';
+                
+                const label = document.createElement('label');
+                label.style.color = '#333';
+                label.style.fontSize = '13px';
+                label.style.minWidth = '60px';
+                label.textContent = `Rom ${room}:`;
+                
+                const input = document.createElement('input');
+                input.type = 'number';
+                input.min = '1';
+                input.style.width = '80px';
+                input.style.padding = '4px 6px';
+                input.style.border = '1px solid #ddd';
+                input.style.borderRadius = '3px';
+                input.style.fontSize = '12px';
+                input.value = roomCopies[room] || '1';
+                input.addEventListener('change', (e) => {
+                    if (e.target.value) {
+                        roomCopies[room] = parseInt(e.target.value);
+                    } else {
+                        delete roomCopies[room];
+                    }
+                });
+                
+                rowDiv.appendChild(label);
+                rowDiv.appendChild(input);
+                roomCopiesList.appendChild(rowDiv);
+            });
         }
 
         function getDisplayName(student) {
@@ -1312,8 +1410,16 @@
             return generateRoomTablesWithFilter(false);
         }
 
+        async function generateRoomTablesExcel() {
+            return generateRoomTablesExcelWithFilter(false);
+        }
+
         async function generateTilretteTables() {
             return generateRoomTablesWithFilter(true);
+        }
+
+        async function generateTilretteTablesExcel() {
+            return generateRoomTablesExcelWithFilter(true);
         }
 
         function getTilretteleggingValue(student) {
@@ -1496,10 +1602,11 @@
                     return parseInt(a) - parseInt(b) || a.localeCompare(b);
                 });
 
-                const copiesPerRoom = Math.max(1, parseInt(copiesPerRoomInput.value, 10) || 1);
+                const defaultCopiesPerRoom = Math.max(1, parseInt(copiesPerRoomInput.value, 10) || 1);
                 const roomsToRender = [];
                 sortedRooms.forEach(room => {
-                    for (let i = 0; i < copiesPerRoom; i++) {
+                    const copies = roomCopies[room] !== undefined ? roomCopies[room] : defaultCopiesPerRoom;
+                    for (let i = 0; i < copies; i++) {
                         roomsToRender.push(room);
                     }
                 });
@@ -1940,8 +2047,8 @@
 
                 showStatus(
                     onlyTilrettelegging
-                        ? `Tilretteleggingstabeller generert for ${sortedRooms.length} rom (${copiesPerRoom} kopier hver)`
-                        : `Romtabeller generert for ${sortedRooms.length} rom (${copiesPerRoom} kopier hver)`,
+                        ? `Tilretteleggingstabeller generert (${roomsToRender.length} sider for ${sortedRooms.length} rom)`
+                        : `Romtabeller generert (${roomsToRender.length} sider for ${sortedRooms.length} rom)`,
                     'success'
                 );
 
@@ -1951,7 +2058,207 @@
             } finally {
                 generateBtn.disabled = false;
                 generateTablesBtn.disabled = false;
+                generateTablesExcelBtn.disabled = false;
                 generateTilretteTablesBtn.disabled = false;
+                generateTilretteTablesExcelBtn.disabled = false;
+                spinner.classList.remove('visible');
+            }
+        }
+
+        async function generateRoomTablesExcelWithFilter(onlyTilrettelegging) {
+            if (!currentData) return;
+
+            if (selectedDates.size === 0) {
+                showStatus('Please select at least one date to export', 'error');
+                return;
+            }
+
+            if (onlyTilrettelegging) {
+                const hasTilretteColumn = currentData.length > 0 && currentData.some(student => {
+                    return getTilretteleggingValue(student) !== undefined && getTilretteleggingValue(student) !== '';
+                });
+
+                if (!hasTilretteColumn) {
+                    showStatus('Manglende kolonne: eksamenstilrettelegginger / eksamenstilretteleggingar / exam accommodations / Facilitations / facilitations', 'error');
+                    return;
+                }
+            }
+
+            generateTablesExcelBtn.disabled = true;
+            generateTilretteTablesExcelBtn.disabled = true;
+            spinner.classList.add('visible');
+            showStatus(
+                onlyTilrettelegging ? 'Genererer tilretteleggingstabeller (Excel)...' : 'Genererer romtabeller (Excel)...',
+                'processing'
+            );
+
+            try {
+                // Filter and group by room (same logic as Word version)
+                const filteredData = currentData.filter(student => {
+                    const date = formatDate(getEksamensdatoValue(student));
+                    if (!selectedDates.has(date)) {
+                        return false;
+                    }
+
+                    if (!onlyTilrettelegging) {
+                        return true;
+                    }
+
+                    const tilrette = getTilretteleggingFlags(student);
+                    return tilrette.cleaned.length > 0;
+                });
+
+                if (filteredData.length === 0) {
+                    showStatus(
+                        onlyTilrettelegging
+                            ? 'Ingen studenter med eksamenstilrettelegginger funnet for valgte datoer'
+                            : 'Ingen studenter funnet for valgte datoer',
+                        'error'
+                    );
+                    return;
+                }
+
+                // Group by room
+                const roomGroups = {};
+                filteredData.forEach(student => {
+                    const room = String(getRoomValue(student)).trim();
+                    if (!roomGroups[room]) {
+                        roomGroups[room] = [];
+                    }
+                    roomGroups[room].push(student);
+                });
+
+                // Sort students within each room by date first, then name
+                Object.keys(roomGroups).forEach(room => {
+                    roomGroups[room].sort((a, b) => {
+                        // First sort by date
+                        const dateA = formatDate(getEksamensdatoValue(a));
+                        const dateB = formatDate(getEksamensdatoValue(b));
+                        if (dateA !== dateB) return dateA.localeCompare(dateB);
+                        
+                        // Then sort by name
+                        return compareStudentsByName(a, b);
+                    });
+                });
+
+                // Sort rooms numerically
+                const sortedRooms = Object.keys(roomGroups).sort((a, b) => {
+                    return parseInt(a) - parseInt(b) || a.localeCompare(b);
+                });
+
+                // Create list of rooms to render based on copy counts
+                const defaultCopiesPerRoom = Math.max(1, parseInt(copiesPerRoomInput.value, 10) || 1);
+                const roomsToRender = [];
+                sortedRooms.forEach(room => {
+                    const copies = roomCopies[room] !== undefined ? roomCopies[room] : defaultCopiesPerRoom;
+                    for (let i = 0; i < copies; i++) {
+                        roomsToRender.push(room);
+                    }
+                });
+
+                // Create Excel workbook with separate sheets for each room
+                const workbook = XLSX.utils.book_new();
+                
+                roomsToRender.forEach((room, roomIndex) => {
+                    const students = roomGroups[room];
+                    const roomDate = formatDate(getEksamensdatoValue(students[0]));
+                    
+                    // Create header row
+                    const headers = ['Navn', 'Kandidatnr.', 'Fagkode - Fagnavn'];
+                    
+                    if (!onlyTilrettelegging) {
+                        headers.push('Telefon', 'Møtt', 'Tidspunkt levert', 'Hendelser');
+                    } else {
+                        headers.push('Utvidet tid');
+                        // Check if any student in this room has skjermet plass
+                        const hasSkjermetPlass = students.some(student => {
+                            const tilrette = getTilretteleggingFlags(student);
+                            return tilrette.skjermetPlass;
+                        });
+                        if (hasSkjermetPlass) {
+                            headers.push('Skjermet plass');
+                        }
+                        headers.push('Lingdys');
+                    }
+                    
+                    // Create data rows
+                    const rows = [headers];
+                    students.forEach(student => {
+                        const name = getDisplayName(student);
+                        const pas = String(getPASKandidatnummerValue(student) || '');
+                        const subject = shortenSubject(getFagkodeValue(student), getFagnavnValue(student));
+                        
+                        if (!onlyTilrettelegging) {
+                            const phone = cleanPhoneNumber(getTelefonValue(student));
+                            rows.push([name, pas, subject, phone, '', '', '']);
+                        } else {
+                            const tilrette = getTilretteleggingFlags(student);
+                            const row = [name, pas, subject, tilrette.utvidetTid ? 'X' : ''];
+                            
+                            // Check if we need skjermet plass column
+                            const hasSkjermetPlass = students.some(s => {
+                                const t = getTilretteleggingFlags(s);
+                                return t.skjermetPlass;
+                            });
+                            
+                            if (hasSkjermetPlass) {
+                                row.push(tilrette.skjermetPlass ? 'X' : '');
+                            }
+                            row.push(tilrette.lingdys ? 'X' : '');
+                            rows.push(row);
+                        }
+                    });
+                    
+                    // Create worksheet
+                    const worksheet = XLSX.utils.aoa_to_sheet(rows);
+                    
+                    // Set column widths
+                    const colWidths = [25, 15, 30, 15];
+                    if (!onlyTilrettelegging) {
+                        colWidths.push(15, 15, 15);
+                    } else {
+                        colWidths.push(12);
+                        const hasSkjermetPlass = students.some(s => {
+                            const t = getTilretteleggingFlags(s);
+                            return t.skjermetPlass;
+                        });
+                        if (hasSkjermetPlass) {
+                            colWidths.push(15);
+                        }
+                        colWidths.push(12);
+                    }
+                    worksheet['!cols'] = colWidths.map(w => ({ wch: w }));
+                    
+                    // Add worksheet to workbook
+                    // Count how many times this room appears up to this point
+                    const roomCopyCount = roomsToRender.slice(0, roomIndex + 1).filter(r => r === room).length;
+                    const defaultCopies = Math.max(1, parseInt(copiesPerRoomInput.value, 10) || 1);
+                    const totalCopiesForRoom = roomCopies[room] !== undefined ? roomCopies[room] : defaultCopies;
+                    
+                    let sheetName = `Rom ${room}`;
+                    if (totalCopiesForRoom > 1) {
+                        sheetName += ` (${roomCopyCount})`;
+                    }
+                    XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
+                });
+                
+                // Generate Excel file
+                const filename = onlyTilrettelegging ? 'candidates_accommodations.xlsx' : 'candidates_by_room.xlsx';
+                XLSX.writeFile(workbook, filename);
+                
+                showStatus(
+                    onlyTilrettelegging
+                        ? `Tilretteleggingstabeller generert (${roomsToRender.length} ark for ${sortedRooms.length} rom)`
+                        : `Romtabeller generert (${roomsToRender.length} ark for ${sortedRooms.length} rom)`,
+                    'success'
+                );
+
+            } catch (error) {
+                showStatus('Feil ved generering av Excel-fil: ' + error.message, 'error');
+                console.error(error);
+            } finally {
+                generateTablesExcelBtn.disabled = false;
+                generateTilretteTablesExcelBtn.disabled = false;
                 spinner.classList.remove('visible');
             }
         }
