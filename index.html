@@ -2768,83 +2768,6 @@
             return matches.map(part => part.trim()).filter(Boolean);
         }
 
-        function parseHjelpemidlerInfo(hjelpemidlerText) {
-            // Clean the text
-            let text = hjelpemidlerText
-                .replace(/<[^>]*>/g, '') // Remove HTML tags
-                .replace(/\s+/g, ' ') // Normalize whitespace
-                .trim();
-
-            // Remove Del 1/Del 2 lines as they're handled separately
-            text = text
-                .replace(/Del\s*1\s+gjennomf[øo]rer\s+du\s+p[åa]\s+papir:\s*Se\s+i\s+eksamensveiledningen\s+hvilke\s+hjelpemidler\s+som\s+er\s+tillatt\.\s*/gi, '')
-                .replace(/Del\s*2\s+kan\s+du\s+gjennomf[øo]re\s+digitalt\.\s*/gi, '')
-                .replace(/Se\s+i\s+eksamensveiledningen.*?tillatt\.\s*/gi, '')
-                .trim();
-
-            const allowed = [];
-            const prohibited = [];
-            const notes = [];
-
-            // Split into sentences
-            const sentences = text.split(/(?<=[.!?])\s+/).filter(s => s.trim());
-
-            sentences.forEach(sentence => {
-                sentence = sentence.trim();
-                if (!sentence) return;
-
-                // Check if this is a prohibited item
-                if (/ikke\s+tillatt|forbudt|er\s+ikke\s+lov|kan\s+ikke/i.test(sentence)) {
-                    // Extract what's prohibited
-                    let prohibited_item = sentence
-                        .replace(/Det\s+er\s+ikke\s+tillatt\s+å\s+/i, '')
-                        .replace(/Det\s+er\s+forbudt\s+å\s+/i, '')
-                        .replace(/Det\s+er\s+ikke\s+lov\s+å\s+/i, '')
-                        .replace(/Du\s+kan\s+ikke\s+/i, '')
-                        .trim();
-                    
-                    if (prohibited_item && prohibited_item.length > 3) {
-                        prohibited.push(prohibited_item);
-                    }
-                } 
-                // Check if this is allowed aids
-                else if (/tillatt|lov|er\s+på|papir|bøker|oppslagsverk|notater|nettbasert|digitalt|alle\s+hjelpemidler/i.test(sentence)) {
-                    // Special handling for paper aids list
-                    if (/bøker|oppslagsverk|notater|papir/.test(sentence)) {
-                        if (!/ikke\s+tillatt|forbudt/i.test(sentence)) {
-                            let allowed_item = sentence
-                                .replace(/^[\w\s]*?(?:hjelpemidler|som|at|er|kan|du\s+kan)\s+/i, '')
-                                .trim();
-                            
-                            if (allowed_item && allowed_item.length > 3) {
-                                allowed.push(allowed_item);
-                            }
-                        }
-                    }
-                    // Handle "alle hjelpemidler" (all aids allowed)
-                    else if (/alle\s+hjelpemidler\s+er\s+(?:lov|tillatt)/i.test(sentence)) {
-                        allowed.push('Alle hjelpemidler er tillatt (med eventuelle unntak som opplistet under)');
-                    }
-                    // Handle nettbaserte hjelpemidler
-                    else if (/nettbasert/i.test(sentence)) {
-                        allowed.push('Nettbaserte hjelpemidler');
-                    }
-                } 
-                // Handle special notes
-                else if (/stavekontroll|språk|veiledning|eksamen/i.test(sentence)) {
-                    if (!/bøker|oppslagsverk|notater/.test(sentence)) {
-                        notes.push(sentence);
-                    }
-                }
-            });
-
-            return {
-                allowed: allowed.length > 0 ? allowed : null,
-                prohibited: prohibited.length > 0 ? prohibited : null,
-                notes: notes.length > 0 ? notes : null
-            };
-        }
-
         function generateTimeHelpContent(date, room, fagkoder, fagkodeInfo) {
             const children = [];
 
@@ -3006,21 +2929,25 @@
                         }
                     }
 
-                    // Hjelpemidler - Improved structured format
+                    // Hjelpemidler
                     if (info.hjelpemidler) {
-                        // Main heading
                         children.push(new docx.Paragraph({
                             children: [new docx.TextRun({
                                 text: 'HJELPEMIDLER UNDER EKSAMEN',
                                 bold: true,
                                 size: 28,
-                                font: 'Calibri',
-                                color: '1a1a1a'
+                                font: 'Calibri'
                             })],
                             spacing: { before: 200, after: 200 }
                         }));
 
-                        // Time information section - Show Del 1 / Del 2 with times clearly
+                        // Clean and format hjelpemidler text
+                        let hjelpemidlerText = info.hjelpemidler
+                            .replace(/<[^>]*>/g, '') // Remove HTML tags
+                            .replace(/\s+/g, ' ') // Normalize whitespace
+                            .trim();
+
+                        // Always show Del 1 / Del 2 lines explicitly for two-part exams
                         if (info.del1 && info.del2) {
                             children.push(new docx.Paragraph({
                                 children: [new docx.TextRun({
@@ -3049,106 +2976,35 @@
                                 })],
                                 spacing: { after: 200 }
                             }));
+
+                            // Remove duplicate Del-text from source text if present
+                            hjelpemidlerText = hjelpemidlerText
+                                .replace(/Del\s*1\s+gjennomf[øo]rer\s+du\s+p[åa]\s+papir:\s*Se\s+i\s+eksamensveiledningen\s+hvilke\s+hjelpemidler\s+som\s+er\s+tillatt\.\s*/i, '')
+                                .replace(/Del\s*2\s+kan\s+du\s+gjennomf[øo]re\s+digitalt\.\s*/i, '')
+                                .trim();
                         }
 
-                        // Parse and structure hjelpemidler info
-                        const hjelpemidlerInfo = parseHjelpemidlerInfo(info.hjelpemidler);
-                        
-                        // Tillatte hjelpemidler (Allowed aids)
-                        if (hjelpemidlerInfo.allowed && hjelpemidlerInfo.allowed.length > 0) {
+                        children.push(new docx.Paragraph({
+                            children: [new docx.TextRun({
+                                text: 'Vilkår og bestemmelser:',
+                                bold: true,
+                                size: 24,
+                                font: 'Calibri'
+                            })],
+                            spacing: { before: 100, after: 100 }
+                        }));
+
+                        const helpLines = splitIntoSentences(hjelpemidlerText);
+                        helpLines.forEach((line, lineIndex) => {
                             children.push(new docx.Paragraph({
                                 children: [new docx.TextRun({
-                                    text: 'Tillatte hjelpemidler:',
-                                    bold: true,
-                                    size: 24,
-                                    font: 'Calibri',
-                                    color: '2d5016'
-                                })],
-                                spacing: { before: 100, after: 100 }
-                            }));
-
-                            hjelpemidlerInfo.allowed.forEach((item, idx) => {
-                                children.push(new docx.Paragraph({
-                                    children: [new docx.TextRun({
-                                        text: '• ' + item,
-                                        size: 22,
-                                        font: 'Calibri'
-                                    })],
-                                    spacing: { after: 50 }
-                                }));
-                            });
-
-                            children.push(new docx.Paragraph({
-                                children: [new docx.TextRun({
-                                    text: ''
-                                })],
-                                spacing: { after: 100 }
-                            }));
-                        }
-
-                        // Forbudte hjelpemidler (Prohibited aids)
-                        if (hjelpemidlerInfo.prohibited && hjelpemidlerInfo.prohibited.length > 0) {
-                            children.push(new docx.Paragraph({
-                                children: [new docx.TextRun({
-                                    text: 'Forbudte hjelpemidler:',
-                                    bold: true,
-                                    size: 24,
-                                    font: 'Calibri',
-                                    color: 'b91c1c'
-                                })],
-                                spacing: { before: 100, after: 100 }
-                            }));
-
-                            hjelpemidlerInfo.prohibited.forEach((item, idx) => {
-                                children.push(new docx.Paragraph({
-                                    children: [new docx.TextRun({
-                                        text: '• ' + item,
-                                        size: 22,
-                                        font: 'Calibri'
-                                    })],
-                                    spacing: { after: 50 }
-                                }));
-                            });
-
-                            children.push(new docx.Paragraph({
-                                children: [new docx.TextRun({
-                                    text: ''
-                                })],
-                                spacing: { after: 100 }
-                            }));
-                        }
-
-                        // General notes/instructions
-                        if (hjelpemidlerInfo.notes && hjelpemidlerInfo.notes.length > 0) {
-                            children.push(new docx.Paragraph({
-                                children: [new docx.TextRun({
-                                    text: 'Viktige merknader:',
-                                    bold: true,
-                                    size: 24,
+                                    text: '• ' + line,
+                                    size: 22,
                                     font: 'Calibri'
                                 })],
-                                spacing: { before: 100, after: 100 }
+                                spacing: { after: lineIndex === helpLines.length - 1 ? 300 : 50 }
                             }));
-
-                            hjelpemidlerInfo.notes.forEach((note, idx) => {
-                                children.push(new docx.Paragraph({
-                                    children: [new docx.TextRun({
-                                        text: '• ' + note,
-                                        italics: false,
-                                        size: 22,
-                                        font: 'Calibri'
-                                    })],
-                                    spacing: { after: 50 }
-                                }));
-                            });
-
-                            children.push(new docx.Paragraph({
-                                children: [new docx.TextRun({
-                                    text: ''
-                                })],
-                                spacing: { after: 300 }
-                            }));
-                        }
+                        });
                     }
                 }
             });
