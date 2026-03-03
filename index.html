@@ -1478,9 +1478,17 @@
                     roomGroups[room].push(student);
                 });
 
-                // Sort students within each room by name
+                // Sort students within each room by date first, then name
                 Object.keys(roomGroups).forEach(room => {
-                    roomGroups[room].sort(compareStudentsByName);
+                    roomGroups[room].sort((a, b) => {
+                        // First sort by date
+                        const dateA = formatDate(getEksamensdatoValue(a));
+                        const dateB = formatDate(getEksamensdatoValue(b));
+                        if (dateA !== dateB) return dateA.localeCompare(dateB);
+                        
+                        // Then sort by name
+                        return compareStudentsByName(a, b);
+                    });
                 });
 
                 // Sort rooms numerically
@@ -2091,14 +2099,18 @@
                         return selectedDates.has(date);
                     })
                     .sort((a, b) => {
+                        // First sort by date
+                        const dateA = formatDate(getEksamensdatoValue(a));
+                        const dateB = formatDate(getEksamensdatoValue(b));
+                        if (dateA !== dateB) return dateA.localeCompare(dateB);
+                        
+                        // Then sort by room
                         const roomA = String(getRoomValue(a)).trim();
                         const roomB = String(getRoomValue(b)).trim();
-                        
-                        // Compare room numbers
                         const roomCompare = roomA.localeCompare(roomB, undefined, { numeric: true });
                         if (roomCompare !== 0) return roomCompare;
                         
-                        // If same room, compare by name using shared comparator
+                        // Finally sort by name
                         return compareStudentsByName(a, b);
                     });
 
