@@ -2996,14 +2996,45 @@
 
                         const helpLines = splitIntoSentences(hjelpemidlerText);
                         helpLines.forEach((line, lineIndex) => {
-                            children.push(new docx.Paragraph({
-                                children: [new docx.TextRun({
-                                    text: '• ' + line,
-                                    size: 22,
-                                    font: 'Calibri'
-                                })],
-                                spacing: { after: lineIndex === helpLines.length - 1 ? 300 : 50 }
-                            }));
+                            // Check if line contains a colon - if so, split it
+                            if (line.includes(':')) {
+                                const colonIndex = line.indexOf(':');
+                                const beforeColon = line.substring(0, colonIndex + 1).trim();
+                                const afterColon = line.substring(colonIndex + 1).trim();
+
+                                // Add intro line without bullet
+                                children.push(new docx.Paragraph({
+                                    children: [new docx.TextRun({
+                                        text: beforeColon,
+                                        size: 22,
+                                        font: 'Calibri'
+                                    })],
+                                    spacing: { after: 50 }
+                                }));
+
+                                // Add rest as sub-item with dash
+                                if (afterColon) {
+                                    children.push(new docx.Paragraph({
+                                        children: [new docx.TextRun({
+                                            text: '- ' + afterColon,
+                                            size: 22,
+                                            font: 'Calibri'
+                                        })],
+                                        spacing: { after: 50 },
+                                        indent: { left: 360 }
+                                    }));
+                                }
+                            } else {
+                                // Regular bullet point
+                                children.push(new docx.Paragraph({
+                                    children: [new docx.TextRun({
+                                        text: '• ' + line,
+                                        size: 22,
+                                        font: 'Calibri'
+                                    })],
+                                    spacing: { after: lineIndex === helpLines.length - 1 ? 300 : 50 }
+                                }));
+                            }
                         });
                     }
                 }
