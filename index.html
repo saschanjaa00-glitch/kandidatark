@@ -2201,6 +2201,11 @@
                         for (const fagkode of fagkoder) {
                             try {
                                 const info = fetchExamInfo(fagkode);
+                                // Add fagnavn from student data
+                                const studentWithFagkode = studentsInRoomOnDate.find(s => String(getFagkodeValue(s)).trim() === fagkode);
+                                if (info && studentWithFagkode) {
+                                    info.fagnavn = getFagnavnValue(studentWithFagkode);
+                                }
                                 fagkodeInfo[fagkode] = info;
                             } catch (e) {
                                 console.error(`Feil ved henting av info for ${fagkode}:`, e);
@@ -2654,12 +2659,13 @@
             fagkoder.forEach(fagkode => {
                 const info = fagkodeInfo[fagkode];
                 
-                // Fagkode heading
+                // Fagkode heading with fagnavn
+                const headingText = info && info.fagnavn ? `${fagkode} - ${info.fagnavn}` : fagkode;
                 children.push(new docx.Paragraph({
                     children: [new docx.TextRun({
-                        text: fagkode,
+                        text: headingText,
                         bold: true,
-                        size: 24,
+                        size: 28,
                         font: 'Calibri'
                     })],
                     spacing: { before: 200, after: 100 }
@@ -2802,7 +2808,7 @@
                             children: [new docx.TextRun({
                                 text: 'HJELPEMIDLER UNDER EKSAMEN',
                                 bold: true,
-                                size: 28,
+                                size: 24,
                                 font: 'Calibri'
                             })],
                             spacing: { before: 200, after: 200 }
@@ -2850,16 +2856,6 @@
                                 .replace(/Del\s*2\s+kan\s+du\s+gjennomf[øo]re\s+digitalt\.\s*/i, '')
                                 .trim();
                         }
-
-                        children.push(new docx.Paragraph({
-                            children: [new docx.TextRun({
-                                text: 'Vilkår og bestemmelser:',
-                                bold: true,
-                                size: 24,
-                                font: 'Calibri'
-                            })],
-                            spacing: { before: 100, after: 100 }
-                        }));
 
                         const helpLines = splitIntoSentences(hjelpemidlerText);
                         helpLines.forEach((line, lineIndex) => {
