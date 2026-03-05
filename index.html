@@ -30,6 +30,8 @@
             <div class="upload-hint">Støtter .xlsx og .xls filer</div>
         </div>
 
+        <div id="uploadError" style="display: none; background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; padding: 12px; border-radius: 6px; margin-bottom: 20px; font-size: 14px;"></div>
+
         <input type="file" id="fileInput" accept=".xlsx,.xls">
 
         <div class="file-info" id="fileInfo">
@@ -227,6 +229,7 @@
                         <div class="upload-text" style="font-size: 13px;">Klikk eller dra vaktliste hit</div>
                         <div class="upload-hint" style="font-size: 11px;">Kolonner: Romnummer, Fag, Hovedvakt</div>
                     </div>
+                    <div id="pptSupervisorError" style="display: none; background: #ffebee; color: #c62828; border: 1px solid #ffcdd2; padding: 12px; border-radius: 6px; margin-bottom: 12px; font-size: 14px;"></div>
                     <div style="color: #999; font-size: 11px; margin-bottom: 12px; margin-top: -4px; line-height: 1.4;">Legg til vaktliste for å få dette med i PowerPointen. Som minimum må det være fane med navn oppgitt som dato eks. 04.05, og ha tre kolonner: Rom, Fag og Hovedvakt.<br>Andre vakter tas ikke automatisk med.</div>
                     <input type="file" id="pptSupervisorFile" accept=".xlsx,.xls" style="display: none;">
                     <div id="pptSupervisorFileInfo" style="display: none; background: #e8f5e9; padding: 8px 12px; border-radius: 4px; border: 1px solid #c8e6c9; margin-bottom: 6px;">
@@ -317,6 +320,7 @@
         
         const uploadArea = document.getElementById('uploadArea');
         const fileInput = document.getElementById('fileInput');
+        const uploadError = document.getElementById('uploadError');
         const fileInfo = document.getElementById('fileInfo');
         const fileName = document.getElementById('fileName');
         const fileStats = document.getElementById('fileStats');
@@ -360,6 +364,7 @@
         const pptSupervisorFileInfo = document.getElementById('pptSupervisorFileInfo');
         const pptSupervisorFileName = document.getElementById('pptSupervisorFileName');
         const pptSupervisorFileStatus = document.getElementById('pptSupervisorFileStatus');
+        const pptSupervisorError = document.getElementById('pptSupervisorError');
         const pptRemoveSupervisorBtn = document.getElementById('pptRemoveSupervisorBtn');
         let pptSupervisorData = null;
         
@@ -555,7 +560,7 @@
 
         function handleFile(file) {
             if (!file.name.match(/\.(xlsx|xls)$/)) {
-                showStatus('Vennligst velg en Excel-fil (.xlsx eller .xls)', 'error');
+                showUploadError('Vennligst velg en Excel-fil (.xlsx eller .xls)');
                 return;
             }
 
@@ -568,7 +573,7 @@
                     const jsonData = XLSX.utils.sheet_to_json(firstSheet);
 
                     if (jsonData.length === 0) {
-                        showStatus('Excel-filen er tom', 'error');
+                        showUploadError('Excel-filen er tom');
                         return;
                     }
 
@@ -607,7 +612,7 @@
                     }
 
                     if (missingColumns.length > 0) {
-                        showStatus(`Manglende kolonner: ${missingColumns.join(', ')}`, 'error');
+                        showUploadError(`Manglende kolonner: ${missingColumns.join(', ')}`);
                         return;
                     }
 
@@ -620,10 +625,13 @@
                         });
                         
                         if (filteredData.length === 0) {
-                            showStatus('Ingen studenter med "Skriftlig/Skriftleg/Written" eksamen funnet', 'error');
+                            showUploadError('Ingen studenter med "Skriftlig/Skriftleg/Written" eksamen funnet');
                             return;
                         }
                     }
+
+                    // Clear error when file loads successfully
+                    clearUploadError();
 
                     currentData = filteredData;
                     fileName.textContent = file.name;
@@ -655,7 +663,7 @@
                     updatePowerPointDateOptions();
 
                 } catch (error) {
-                    showStatus('Feil ved lesing av Excel-fil: ' + error.message, 'error');
+                    showUploadError('Feil ved lesing av Excel-fil: ' + error.message);
                 }
             };
 
@@ -1187,6 +1195,7 @@
             pptSupervisorFileStatus.textContent = '';
             pptSupervisorFileInfo.style.display = 'none';
             pptSupervisorUploadArea.style.display = 'block';
+            clearPptSupervisorError();
         });
 
         pptSupervisorFile.addEventListener('change', (e) => {
@@ -1197,15 +1206,12 @@
                 pptSupervisorFileStatus.textContent = '';
                 pptSupervisorFileInfo.style.display = 'none';
                 pptSupervisorUploadArea.style.display = 'block';
+                clearPptSupervisorError();
                 return;
             }
 
             if (!file.name.match(/\.(xlsx|xls)$/)) {
-                pptSupervisorFileName.textContent = file.name;
-                pptSupervisorFileStatus.textContent = 'Ugyldig filtype - vennligst velg .xlsx eller .xls';
-                pptSupervisorFileStatus.style.color = '#c62828';
-                pptSupervisorFileInfo.style.display = 'block';
-                pptSupervisorUploadArea.style.display = 'none';
+                showPptSupervisorError('Ugyldig filtype - vennligst velg .xlsx eller .xls');
                 pptSupervisorData = null;
                 return;
             }
@@ -1216,8 +1222,64 @@
                     const data = new Uint8Array(evt.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     
+                    // Validate that at least one sheet has the required columns
+                    const requiredColumns = ['Rom', 'Fag', 'Hovedvakt'];
+                    let hasValidSheet = false;
+                    let missingInAllSheets = null;
+                    
+                    for (const sheetName of workbook.SheetNames) {
+                        const sheet = workbook.Sheets[sheetName];
+                        
+                        // Get all rows as arrays to search for header row (skip blank rows at top)
+                        const sheetArray = XLSX.utils.sheet_to_json(sheet, { header: 1 });
+                        
+                        if (sheetArray.length > 0) {
+                            let headerRowFound = false;
+                            
+                            // Search through first 20 rows to find one with all required columns
+                            for (let i = 0; i < Math.min(sheetArray.length, 20); i++) {
+                                const row = sheetArray[i];
+                                if (Array.isArray(row) && row.length > 0) {
+                                    const rowStr = row.map(cell => String(cell || '').trim().toLowerCase()).join('|');
+                                    const hasAllColumns = requiredColumns.every(col => 
+                                        row.some(cell => String(cell || '').trim().toLowerCase() === col.toLowerCase())
+                                    );
+                                    
+                                    if (hasAllColumns) {
+                                        headerRowFound = true;
+                                        break;
+                                    }
+                                }
+                            }
+                            
+                            if (headerRowFound) {
+                                hasValidSheet = true;
+                                break;
+                            } else {
+                                const missingCols = requiredColumns.filter(col => 
+                                    !sheetArray.some(row => 
+                                        Array.isArray(row) && row.some(cell => 
+                                            String(cell || '').trim().toLowerCase() === col.toLowerCase()
+                                        )
+                                    )
+                                );
+                                if (missingInAllSheets === null && missingCols.length > 0) {
+                                    missingInAllSheets = missingCols;
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (!hasValidSheet) {
+                        const missingCols = missingInAllSheets || requiredColumns;
+                        showPptSupervisorError(`Manglende kolonner: ${missingCols.join(', ')}. Påkrevde kolonner: Rom, Fag, Hovedvakt`);
+                        pptSupervisorData = null;
+                        return;
+                    }
+                    
                     // Store the full workbook for later date-based filtering
                     pptSupervisorData = { workbook };
+                    clearPptSupervisorError();
                     pptSupervisorFileName.textContent = file.name;
                     pptSupervisorFileStatus.textContent = `✓ Lastet vaktliste med ${workbook.SheetNames.length} ark`;
                     pptSupervisorFileStatus.style.color = '#2e7d32';
@@ -1225,11 +1287,7 @@
                     pptSupervisorUploadArea.style.display = 'none';
 
                 } catch (error) {
-                    pptSupervisorFileName.textContent = file.name;
-                    pptSupervisorFileStatus.textContent = 'Feil ved lesing av fil: ' + error.message;
-                    pptSupervisorFileStatus.style.color = '#c62828';
-                    pptSupervisorFileInfo.style.display = 'block';
-                    pptSupervisorUploadArea.style.display = 'none';
+                    showPptSupervisorError('Feil ved lesing av fil: ' + error.message);
                     pptSupervisorData = null;
                 }
             };
@@ -3144,6 +3202,8 @@
                             headerPositions.hovedvakt?.row ?? 0
                         );
                         
+                        let consecutiveEmptyRows = 0;
+                        
                         for (let row = headerRow + 1; row <= range.e.r; row++) {
                             let romnummer = '';
                             let fag = '';
@@ -3173,8 +3233,48 @@
                                     hovedvakt: hovedvakt,
                                     fag: fag
                                 });
-                            } else if (romnummer === '' && fag === '' && hovedvakt === '') {
-                                break;
+                                consecutiveEmptyRows = 0;
+                            } else {
+                                // Count consecutive empty rows
+                                consecutiveEmptyRows++;
+                                // When we find 3 consecutive empty rows, look ahead to check for more data
+                                if (consecutiveEmptyRows >= 3) {
+                                    let hasDataAhead = false;
+                                    // Check the next 10 rows for any data
+                                    for (let lookAheadRow = row + 1; lookAheadRow <= Math.min(row + 10, range.e.r); lookAheadRow++) {
+                                        let lookAheadData = false;
+                                        
+                                        if (headerPositions.rom) {
+                                            const cellAddress = XLSX.utils.encode_cell({ r: lookAheadRow, c: headerPositions.rom.col });
+                                            const cell = sheetToUse[cellAddress];
+                                            if (cell && cell.v) lookAheadData = true;
+                                        }
+                                        
+                                        if (!lookAheadData && headerPositions.fag) {
+                                            const cellAddress = XLSX.utils.encode_cell({ r: lookAheadRow, c: headerPositions.fag.col });
+                                            const cell = sheetToUse[cellAddress];
+                                            if (cell && cell.v) lookAheadData = true;
+                                        }
+                                        
+                                        if (!lookAheadData && headerPositions.hovedvakt) {
+                                            const cellAddress = XLSX.utils.encode_cell({ r: lookAheadRow, c: headerPositions.hovedvakt.col });
+                                            const cell = sheetToUse[cellAddress];
+                                            if (cell && cell.v) lookAheadData = true;
+                                        }
+                                        
+                                        if (lookAheadData) {
+                                            hasDataAhead = true;
+                                            break;
+                                        }
+                                    }
+                                    
+                                    // Only break if no data found in the next 10 rows
+                                    if (!hasDataAhead) {
+                                        break;
+                                    }
+                                    // Reset counter to continue looking
+                                    consecutiveEmptyRows = 0;
+                                }
                             }
                         }
                     }
@@ -3439,6 +3539,8 @@
                                 headerPositions.hovedvakt?.row ?? 0
                             );
                             
+                            let consecutiveEmptyRows = 0;
+                            
                             for (let row = headerRow + 1; row <= range.e.r; row++) {
                                 let romnummer = '';
                                 let fag = '';
@@ -3468,8 +3570,48 @@
                                         hovedvakt: hovedvakt,
                                         fag: fag
                                     });
-                                } else if (romnummer === '' && fag === '' && hovedvakt === '') {
-                                    break;
+                                    consecutiveEmptyRows = 0;
+                                } else {
+                                    // Count consecutive empty rows
+                                    consecutiveEmptyRows++;
+                                    // When we find 3 consecutive empty rows, look ahead to check for more data
+                                    if (consecutiveEmptyRows >= 3) {
+                                        let hasDataAhead = false;
+                                        // Check the next 10 rows for any data
+                                        for (let lookAheadRow = row + 1; lookAheadRow <= Math.min(row + 10, range.e.r); lookAheadRow++) {
+                                            let lookAheadData = false;
+                                            
+                                            if (headerPositions.rom) {
+                                                const cellAddress = XLSX.utils.encode_cell({ r: lookAheadRow, c: headerPositions.rom.col });
+                                                const cell = sheetToUse[cellAddress];
+                                                if (cell && cell.v) lookAheadData = true;
+                                            }
+                                            
+                                            if (!lookAheadData && headerPositions.fag) {
+                                                const cellAddress = XLSX.utils.encode_cell({ r: lookAheadRow, c: headerPositions.fag.col });
+                                                const cell = sheetToUse[cellAddress];
+                                                if (cell && cell.v) lookAheadData = true;
+                                            }
+                                            
+                                            if (!lookAheadData && headerPositions.hovedvakt) {
+                                                const cellAddress = XLSX.utils.encode_cell({ r: lookAheadRow, c: headerPositions.hovedvakt.col });
+                                                const cell = sheetToUse[cellAddress];
+                                                if (cell && cell.v) lookAheadData = true;
+                                            }
+                                            
+                                            if (lookAheadData) {
+                                                hasDataAhead = true;
+                                                break;
+                                            }
+                                        }
+                                        
+                                        // Only break if no data found in the next 10 rows
+                                        if (!hasDataAhead) {
+                                            break;
+                                        }
+                                        // Reset counter to continue looking
+                                        consecutiveEmptyRows = 0;
+                                    }
                                 }
                             }
                         }
@@ -3482,6 +3624,13 @@
                                 }
                             });
                             
+                            // Calculate font size and row height reduction for large tables
+                            const isLargeTable = supervisorList.length > 12;
+                            const sizeMultiplier = isLargeTable ? 0.85 : 1;
+                            const headerFontSize = Math.round(20 * sizeMultiplier);
+                            const bodyFontSize = Math.round(18 * sizeMultiplier);
+                            const rowHeight = isLargeTable ? 0.35 : 0.5;
+                            
                             const romColWidth = Math.max(1.2, (maxRomLength * 0.15) + 0.4);
                             const tableWidth = 9.5;
                             const remainingWidth = tableWidth - romColWidth;
@@ -3491,16 +3640,16 @@
                             const tableRows = [];
                             
                             tableRows.push([
-                                { text: 'Rom', options: { bold: true, fontSize: 20, color: marpInspiredTheme.colors.heading, fill: { color: 'E8F4F8' } } },
-                                { text: 'Hovedvakt', options: { bold: true, fontSize: 20, color: marpInspiredTheme.colors.heading, fill: { color: 'E8F4F8' } } },
-                                { text: 'Fag', options: { bold: true, fontSize: 20, color: marpInspiredTheme.colors.heading, fill: { color: 'E8F4F8' } } }
+                                { text: 'Rom', options: { bold: true, fontSize: headerFontSize, color: marpInspiredTheme.colors.heading, fill: { color: 'E8F4F8' } } },
+                                { text: 'Hovedvakt', options: { bold: true, fontSize: headerFontSize, color: marpInspiredTheme.colors.heading, fill: { color: 'E8F4F8' } } },
+                                { text: 'Fag', options: { bold: true, fontSize: headerFontSize, color: marpInspiredTheme.colors.heading, fill: { color: 'E8F4F8' } } }
                             ]);
 
                             supervisorList.forEach(item => {
                                 tableRows.push([
-                                    { text: item.romnummer || '', options: { fontSize: 18, color: marpInspiredTheme.colors.text } },
-                                    { text: item.hovedvakt || '', options: { fontSize: 18, color: marpInspiredTheme.colors.text } },
-                                    { text: item.fag || '', options: { fontSize: 18, color: marpInspiredTheme.colors.text } }
+                                    { text: item.romnummer || '', options: { fontSize: bodyFontSize, color: marpInspiredTheme.colors.text } },
+                                    { text: item.hovedvakt || '', options: { fontSize: bodyFontSize, color: marpInspiredTheme.colors.text } },
+                                    { text: item.fag || '', options: { fontSize: bodyFontSize, color: marpInspiredTheme.colors.text } }
                                 ]);
                             });
 
@@ -3508,7 +3657,9 @@
                                 x: contentLeft + (contentWidth - tableWidth) / 2,
                                 y: 1.5,
                                 w: tableWidth,
+                                h: (supervisorList.length + 1) * rowHeight,
                                 colW: [romColWidth, hovedvaktColWidth, fagColWidth],
+                                rowH: rowHeight,
                                 border: { pt: 1, color: marpInspiredTheme.colors.subtle },
                                 fontFace: marpInspiredTheme.fonts.body,
                                 align: 'center',
@@ -3535,16 +3686,53 @@
                     const leftColumnText = [];
                     group.subjects.slice(0, 7).forEach(groupSubject => {
                         const info = fetchExamInfo(groupSubject.fagkode);
-                        let durationText = '';
+                        const formatTime = (minutes) => {
+                            const hrs = Math.floor(minutes / 60);
+                            const mins = minutes % 60;
+                            return `${String(hrs).padStart(2, '0')}:${String(mins).padStart(2, '0')}`;
+                        };
+                        
+                        const isTodelt = !!(info && info.del1 && info.del2);
+                        let singlePartNormal = '';
+                        let singlePartExtended = '';
+                        let del1Normal = '';
+                        let del1Extended = '';
+                        let del2Normal = '';
+                        let del2Extended = '';
+                        
                         if (info && info.del1) {
-                            durationText = `${info.del1.start} - ${info.del1.end}`;
+                            const del1Minutes = info.del1.endMinutes - info.del1.startMinutes;
+                            const del2Minutes = info.del2 ? (info.del2.endMinutes - info.del2.startMinutes) : 0;
+                            const totalMinutes = del1Minutes + del2Minutes;
+                            const extraTotalMinutes = Math.round((totalMinutes / 300) * 60);
+                            
+                            if (isTodelt) {
+                                // Same logic as help printout: distribute extra time proportionally
+                                const extraDel1Minutes = Math.round(extraTotalMinutes * (del1Minutes / totalMinutes));
+                                const extraDel2Minutes = extraTotalMinutes - extraDel1Minutes;
+                                
+                                const extendedDel1Minutes = del1Minutes + extraDel1Minutes;
+                                const extendedDel2Minutes = del2Minutes + extraDel2Minutes;
+                                
+                                const del1StartMin = info.del1.startMinutes;
+                                const del1EndMin = del1StartMin + extendedDel1Minutes;
+                                const del2StartMin = del1EndMin;
+                                const del2EndMin = del2StartMin + extendedDel2Minutes;
+                                
+                                del1Normal = `${info.del1.start} - ${info.del1.end}`;
+                                del1Extended = `${formatTime(del1StartMin)} - ${formatTime(del1EndMin)}`;
+                                del2Normal = `${info.del2.start} - ${info.del2.end}`;
+                                del2Extended = `${formatTime(del2StartMin)} - ${formatTime(del2EndMin)}`;
+                            } else {
+                                const extendedEndMin = info.del1.endMinutes + extraTotalMinutes;
+                                singlePartNormal = `${info.del1.start} - ${info.del1.end}`;
+                                singlePartExtended = `${info.del1.start} - ${formatTime(extendedEndMin)}`;
+                            }
                         }
-
-                        const fagText = `${groupSubject.fagnavn || groupSubject.fagkode}${durationText ? ` (${durationText})` : ''}`;
                         
                         // Add subject name with bold formatting
                         leftColumnText.push({
-                            text: fagText + '\n',
+                            text: `${groupSubject.fagnavn || groupSubject.fagkode}\n`,
                             options: {
                                 fontFace: marpInspiredTheme.fonts.body,
                                 bold: true,
@@ -3552,23 +3740,101 @@
                                 color: marpInspiredTheme.colors.heading
                             }
                         });
-
-                        // Add supervisors alphabetically if available
+                        
+                        // Time lines: single-part shows one line, two-part shows Del 1 and Del 2 only
+                        if (isTodelt) {
+                            leftColumnText.push({
+                                text: `Del 1: ${del1Normal}`,
+                                options: {
+                                    fontFace: marpInspiredTheme.fonts.body,
+                                    fontSize: 15,
+                                    color: '808080'
+                                }
+                            });
+                            leftColumnText.push({
+                                text: ` (${del1Extended})\n`,
+                                options: {
+                                    fontFace: marpInspiredTheme.fonts.body,
+                                    fontSize: 14,
+                                    color: 'A9A9A9'
+                                }
+                            });
+                            leftColumnText.push({
+                                text: `Del 2: ${del2Normal}`,
+                                options: {
+                                    fontFace: marpInspiredTheme.fonts.body,
+                                    fontSize: 15,
+                                    color: '808080'
+                                }
+                            });
+                            leftColumnText.push({
+                                text: ` (${del2Extended})\n`,
+                                options: {
+                                    fontFace: marpInspiredTheme.fonts.body,
+                                    fontSize: 14,
+                                    color: 'A9A9A9'
+                                }
+                            });
+                        } else if (singlePartNormal) {
+                            leftColumnText.push({
+                                text: singlePartNormal,
+                                options: {
+                                    fontFace: marpInspiredTheme.fonts.body,
+                                    fontSize: 15,
+                                    color: '808080'
+                                }
+                            });
+                            leftColumnText.push({
+                                text: ` (${singlePartExtended})`,
+                                options: {
+                                    fontFace: marpInspiredTheme.fonts.body,
+                                    fontSize: 14,
+                                    color: 'A9A9A9'
+                                }
+                            });
+                            
+                            leftColumnText.push({
+                                text: '\n',
+                                options: { fontSize: 8 }
+                            });
+                        }
+                        
+                        // Add two blank lines
+                        leftColumnText.push({
+                            text: '\n\n',
+                            options: { fontSize: 8 }
+                        });
+                        
+                        // Add vakter heading and names if available
                         if (supervisorMap.has(groupSubject.fagkode)) {
                             const supervisors = Array.from(new Set(supervisorMap.get(groupSubject.fagkode)))
                                 .filter(s => s && s.trim())
                                 .sort((a, b) => a.localeCompare(b, 'nb'));
                             
-                            supervisors.forEach(supervisor => {
+                            if (supervisors.length > 0) {
+                                // Add "Hovedvakter:" heading
                                 leftColumnText.push({
-                                    text: '  ' + supervisor + '\n',
+                                    text: 'Hovedvakter:\n',
                                     options: {
                                         fontFace: marpInspiredTheme.fonts.body,
-                                        fontSize: 18,
-                                        color: marpInspiredTheme.colors.subtle
+                                        bold: true,
+                                        fontSize: 16,
+                                        color: marpInspiredTheme.colors.heading
                                     }
                                 });
-                            });
+                                
+                                // Add each vakt name
+                                supervisors.forEach(supervisor => {
+                                    leftColumnText.push({
+                                        text: supervisor + '\n',
+                                        options: {
+                                            fontFace: marpInspiredTheme.fonts.body,
+                                            fontSize: 18,
+                                            color: marpInspiredTheme.colors.text
+                                        }
+                                    });
+                                });
+                            }
                         }
 
                         // Add spacing between subjects
@@ -4455,6 +4721,26 @@
         function showStatus(message, type) {
             status.textContent = message;
             status.className = 'status visible ' + type;
+        }
+
+        function showUploadError(message) {
+            uploadError.textContent = message;
+            uploadError.style.display = 'block';
+        }
+
+        function clearUploadError() {
+            uploadError.textContent = '';
+            uploadError.style.display = 'none';
+        }
+
+        function showPptSupervisorError(message) {
+            pptSupervisorError.textContent = message;
+            pptSupervisorError.style.display = 'block';
+        }
+
+        function clearPptSupervisorError() {
+            pptSupervisorError.textContent = '';
+            pptSupervisorError.style.display = 'none';
         }
     </script>
 </body>
