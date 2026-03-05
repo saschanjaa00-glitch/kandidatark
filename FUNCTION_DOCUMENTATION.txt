@@ -60,13 +60,13 @@ Step 5: Session ends
   - No tracking services
   - No analytics with personal data
   - No data sharing with external services
-  - External calls only: Reading exam info from udir.no (no personal data sent)
+  - ZERO external API calls - completely air-gapped operation
 
-✓ EXTERNAL DATA SOURCES:
-  - examDatabaseCompact.js: Exam codes, times, accommodation rules from Udir
-    (This is reference data ONLY - not personal information)
+✓ LOCAL REFERENCE DATA:
+  - examDatabaseCompact.js: Pre-processed local file containing exam codes, 
+    times, and accommodation rules (not fetched from Udir at runtime)
   - Udir links generated: https://kandidat.udir.no/eksamensinfo/[fagkode]
-    (No personal data transmitted)
+    (Display-only hyperlinks for user reference; no data transmission)
 
 ✓ USER CONTROL:
   - Users upload their own files (not forced upload)

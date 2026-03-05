@@ -194,6 +194,56 @@
             </div>
         </div>
 
+        <div id="powerpointContainer" style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
+            <div style="color: #222; cursor: pointer; display: flex; align-items: center; gap: 8px; user-select: none; font-size: 15px; font-weight: 600; margin-bottom: 12px;" onclick="document.getElementById('pptContentDiv').style.display = document.getElementById('pptContentDiv').style.display === 'none' ? 'flex' : 'none'; this.querySelector('span').textContent = document.getElementById('pptContentDiv').style.display === 'none' ? '▶' : '▼';">
+                <span style="font-size: 12px;">▶</span>
+                <span>PowerPoint - Morgenmøte</span>
+            </div>
+            <div id="pptContentDiv" style="display: none; flex-direction: column; gap: 10px;">
+                <label for="pptDateSelect" style="color: #555; font-size: 13px; font-weight: 500;">Velg én dato for presentasjonen:</label>
+                <select id="pptDateSelect" disabled style="padding: 8px 10px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; background: white; color: #333;">
+                    <option value="">Velg dato...</option>
+                </select>
+                
+                <!-- Kontaktpersoner section -->
+                <div style="border-top: 1px solid #e0e0e0; padding-top: 10px; margin-top: 5px;">
+                    <label style="color: #555; font-size: 13px; font-weight: 500; display: block; margin-bottom: 10px;">Kontaktpersoner:</label>
+                    <div id="kontaktpersonerList" style="display: flex; flex-direction: column; gap: 8px;">
+                        <!-- Dynamic contact person rows will be added here -->
+                    </div>
+                    <button id="addKontaktpersonBtn" type="button" style="margin-top: 8px; padding: 6px 12px; background: #4CAF50; color: white; border: none; border-radius: 4px; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 4px;">+ Legg til kontaktperson</button>
+                </div>
+                
+                <div id="pptSubjectOptionsContainer" style="display: none;">
+                    <div style="color: #555; font-size: 13px; font-weight: 500; margin-bottom: 10px;">Alternativer:</div>
+                    <div id="pptSubjectOptionsList" style="color: #333; font-size: 12px; line-height: 1.5; background: #eef5fb; border: 1px solid #c9dff2; border-radius: 4px; padding: 10px;"></div>
+                </div>
+                
+                <!-- Vaktliste section moved here -->
+                <div style="border-top: 1px solid #e0e0e0; padding-top: 10px; margin-top: 5px;">
+                    <label style="color: #555; font-size: 13px; font-weight: 500; display: block; margin-bottom: 6px;">Valgfri: Last opp vaktliste (Excel):</label>
+                    <div class="upload-area" id="pptSupervisorUploadArea" style="margin-bottom: 6px; padding: 20px;">
+                        <div class="upload-icon" style="font-size: 30px;">⇪</div>
+                        <div class="upload-text" style="font-size: 13px;">Klikk eller dra vaktliste hit</div>
+                        <div class="upload-hint" style="font-size: 11px;">Kolonner: Romnummer, Fag, Hovedvakt</div>
+                    </div>
+                    <div style="color: #999; font-size: 11px; margin-bottom: 12px; margin-top: -4px; line-height: 1.4;">Legg til vaktliste for å få dette med i PowerPointen. Som minimum må det være fane med navn oppgitt som dato eks. 04.05, og ha tre kolonner: Rom, Fag og Hovedvakt.<br>Andre vakter tas ikke automatisk med.</div>
+                    <input type="file" id="pptSupervisorFile" accept=".xlsx,.xls" style="display: none;">
+                    <div id="pptSupervisorFileInfo" style="display: none; background: #e8f5e9; padding: 8px 12px; border-radius: 4px; border: 1px solid #c8e6c9; margin-bottom: 6px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 10px;">
+                            <div>
+                                <div id="pptSupervisorFileName" style="font-weight: 500; color: #222; font-size: 12px; margin-bottom: 2px;"></div>
+                                <div id="pptSupervisorFileStatus" style="font-size: 11px; color: #666;"></div>
+                            </div>
+                            <button id="pptRemoveSupervisorBtn" style="background: #c97979; color: white; border: none; padding: 6px 12px; border-radius: 3px; font-size: 11px; cursor: pointer; white-space: nowrap;">Fjern</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <button class="btn btn-kandidatark" id="generatePptBtn" disabled>Generer PowerPoint</button>
+            </div>
+        </div>
+
         <div id="qrCodeContainer" style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px; display: none;">
         </div>
 
@@ -257,6 +307,9 @@
     <!-- Compact exam database fallback -->
     <script src="data/examDatabaseCompact.js"></script>
 
+    <!-- PptxGenJS for PowerPoint generation -->
+    <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
+
     <script>
         let currentData = null;
         let selectedDates = new Set();
@@ -280,6 +333,11 @@
         const generateTilretteTablesBtn = document.getElementById('generateTilretteTablesBtn');
         const generateTilretteTablesExcelBtn = document.getElementById('generateTilretteTablesExcelBtn');
         const generateTimeHelpBtn = document.getElementById('generateTimeHelpBtn');
+        const generatePptBtn = document.getElementById('generatePptBtn');
+        const pptDateSelect = document.getElementById('pptDateSelect');
+        const pptSubjectOptionsContainer = document.getElementById('pptSubjectOptionsContainer');
+        const pptSubjectOptionsList = document.getElementById('pptSubjectOptionsList');
+        const pptSubjectOptions = new Map(); // Store options for each subject
         const generateQRBtn = document.getElementById('generateQRBtn');
         const includeDel1Checkbox = document.getElementById('includeDel1');
         const includeDel2Checkbox = document.getElementById('includeDel2');
@@ -296,6 +354,92 @@
         const duplicatesList = document.getElementById('duplicatesList');
         const missingRoomsWarning = document.getElementById('missingRoomsWarning');
         const missingRoomsList = document.getElementById('missingRoomsList');
+        const selectedPptQrFagkodes = new Set();
+        const pptSupervisorFile = document.getElementById('pptSupervisorFile');
+        const pptSupervisorUploadArea = document.getElementById('pptSupervisorUploadArea');
+        const pptSupervisorFileInfo = document.getElementById('pptSupervisorFileInfo');
+        const pptSupervisorFileName = document.getElementById('pptSupervisorFileName');
+        const pptSupervisorFileStatus = document.getElementById('pptSupervisorFileStatus');
+        const pptRemoveSupervisorBtn = document.getElementById('pptRemoveSupervisorBtn');
+        let pptSupervisorData = null;
+        
+        // Kontaktpersoner
+        const kontaktpersonerList = document.getElementById('kontaktpersonerList');
+        const addKontaktpersonBtn = document.getElementById('addKontaktpersonBtn');
+        let kontaktpersonerData = [];
+        let kontaktpersonCounter = 0;
+        
+        function addKontaktpersonRow(navn = '', rolle = '', telefonnummer = '') {
+            const rowId = kontaktpersonCounter++;
+            const row = document.createElement('div');
+            row.id = `kontaktperson-${rowId}`;
+            row.style.cssText = 'display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 8px; align-items: center;';
+            
+            const navnInput = document.createElement('input');
+            navnInput.type = 'text';
+            navnInput.placeholder = 'Navn';
+            navnInput.value = navn;
+            navnInput.style.cssText = 'padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;';
+            
+            const rolleInput = document.createElement('input');
+            rolleInput.type = 'text';
+            rolleInput.placeholder = 'Rolle';
+            rolleInput.value = rolle;
+            rolleInput.style.cssText = 'padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;';
+            
+            const telefonInput = document.createElement('input');
+            telefonInput.type = 'text';
+            telefonInput.placeholder = 'Telefonnummer';
+            telefonInput.value = telefonnummer;
+            telefonInput.style.cssText = 'padding: 6px 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px;';
+            
+            const removeBtn = document.createElement('button');
+            removeBtn.type = 'button';
+            removeBtn.textContent = '×';
+            removeBtn.style.cssText = 'padding: 6px 10px; background: #f44336; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; font-weight: bold;';
+            removeBtn.title = 'Fjern kontaktperson';
+            removeBtn.addEventListener('click', () => {
+                row.remove();
+                updateKontaktpersonerData();
+            });
+            
+            // Update data when inputs change
+            navnInput.addEventListener('input', updateKontaktpersonerData);
+            rolleInput.addEventListener('input', updateKontaktpersonerData);
+            telefonInput.addEventListener('input', updateKontaktpersonerData);
+            
+            row.appendChild(navnInput);
+            row.appendChild(rolleInput);
+            row.appendChild(telefonInput);
+            row.appendChild(removeBtn);
+            
+            kontaktpersonerList.appendChild(row);
+            updateKontaktpersonerData();
+        }
+        
+        function updateKontaktpersonerData() {
+            kontaktpersonerData = [];
+            const rows = kontaktpersonerList.querySelectorAll('div[id^="kontaktperson-"]');
+            rows.forEach(row => {
+                const inputs = row.querySelectorAll('input');
+                if (inputs.length === 3) {
+                    const navn = inputs[0].value.trim();
+                    const rolle = inputs[1].value.trim();
+                    const telefonnummer = inputs[2].value.trim();
+                    if (navn || rolle || telefonnummer) {
+                        kontaktpersonerData.push({ navn, rolle, telefonnummer });
+                    }
+                }
+            });
+        }
+        
+        addKontaktpersonBtn.addEventListener('click', () => {
+            addKontaktpersonRow();
+        });
+        
+        // Initialize with one row
+        addKontaktpersonRow();
+        
         removeFileBtn.addEventListener('click', () => {
             currentData = null;
             selectedDates = new Set();
@@ -315,6 +459,20 @@
             generateTablesExcelBtn.disabled = true;
             generateTilretteTablesBtn.disabled = true;
             generateTilretteTablesExcelBtn.disabled = true;
+            generatePptBtn.disabled = true;
+            pptDateSelect.disabled = true;
+            pptDateSelect.innerHTML = '<option value="">Velg dato...</option>';
+            document.getElementById('pptContentDiv').style.display = 'none';
+            document.querySelector('#powerpointContainer > div:first-child span').textContent = '▶';
+            pptSubjectOptions.clear();
+            pptSubjectOptionsContainer.style.display = 'none';
+            pptSubjectOptionsList.innerHTML = '';
+            pptSupervisorData = null;
+            pptSupervisorFile.value = '';
+            pptSupervisorFileName.textContent = '';
+            pptSupervisorFileStatus.textContent = '';
+            pptSupervisorFileInfo.style.display = 'none';
+            pptSupervisorUploadArea.style.display = 'block';
             fileInput.value = '';
             status.className = 'status';
         });
@@ -392,6 +550,7 @@
         generateTilretteTablesBtn.addEventListener('click', generateTilretteTables);
         generateTilretteTablesExcelBtn.addEventListener('click', generateTilretteTablesExcel);
         generateTimeHelpBtn.addEventListener('click', generateTimeHelp);
+        generatePptBtn.addEventListener('click', generatePowerPoint);
         generateQRBtn.addEventListener('click', generateQRCodeSheets);
 
         function handleFile(file) {
@@ -493,6 +652,7 @@
                     generateTilretteTablesExcelBtn.disabled = false;
                     generateTimeHelpBtn.disabled = false;
                     generateQRBtn.disabled = false;
+                    updatePowerPointDateOptions();
 
                 } catch (error) {
                     showStatus('Feil ved lesing av Excel-fil: ' + error.message, 'error');
@@ -788,6 +948,7 @@
                             updateTwoPartExamsInfo();
                             populateRoomCopiesList(currentData); // Update room list when dates change
                             updateWarnings(); // Update warnings when dates change
+                            updatePowerPointDateOptions();
                         });
 
                         const label = document.createElement('label');
@@ -828,7 +989,252 @@
             }
 
             datesContainer.style.display = 'block';
+            updatePowerPointDateOptions();
         }
+
+        function updatePowerPointDateOptions() {
+            pptDateSelect.innerHTML = '<option value="">Velg dato...</option>';
+            if (!currentData || selectedDates.size === 0) {
+                pptDateSelect.disabled = true;
+                generatePptBtn.disabled = true;
+                document.getElementById('pptContentDiv').style.display = 'none';
+                document.querySelector('#powerpointContainer > div:first-child span').textContent = '▶';
+                pptSubjectOptions.clear();
+                pptSubjectOptionsContainer.style.display = 'none';
+                pptSubjectOptionsList.innerHTML = '';
+                return;
+            }
+
+            const sortedSelectedDates = Array.from(selectedDates).sort((a, b) => {
+                const parseDate = (dateStr) => {
+                    const parts = dateStr.split('.');
+                    return new Date(parts[2], parts[1] - 1, parts[0]);
+                };
+                return parseDate(a) - parseDate(b);
+            });
+
+            sortedSelectedDates.forEach(date => {
+                const option = document.createElement('option');
+                option.value = date;
+                option.textContent = date;
+                pptDateSelect.appendChild(option);
+            });
+
+            pptDateSelect.disabled = false;
+            if (!pptDateSelect.value || !selectedDates.has(pptDateSelect.value)) {
+                pptDateSelect.value = sortedSelectedDates[0] || '';
+            }
+            updatePowerPointSubjectOptions();
+            generatePptBtn.disabled = !pptDateSelect.value;
+        }
+
+        function getPowerPointExamsForDate(date) {
+            if (!currentData || !date) return [];
+
+            const examsMap = new Map();
+
+            currentData.forEach(student => {
+                const examDate = formatDate(getEksamensdatoValue(student));
+                if (examDate !== date) return;
+
+                const fagkode = String(getFagkodeValue(student) || '').trim();
+                const fagnavn = String(getFagnavnValue(student) || '').trim();
+                if (!fagkode) return;
+
+                const examInfo = fetchExamInfo(fagkode);
+                const isTwoPart = !!(examInfo && examInfo.del1 && examInfo.del2);
+
+                if (!examsMap.has(fagkode)) {
+                    examsMap.set(fagkode, { fagkode, fagnavn, isTwoPart });
+                } else if (!examsMap.get(fagkode).fagnavn && fagnavn) {
+                    examsMap.get(fagkode).fagnavn = fagnavn;
+                }
+            });
+
+            return Array.from(examsMap.values()).sort((a, b) => {
+                const nameA = `${a.fagnavn} ${a.fagkode}`.trim().toLowerCase();
+                const nameB = `${b.fagnavn} ${b.fagkode}`.trim().toLowerCase();
+                return nameA.localeCompare(nameB, 'nb');
+            });
+        }
+
+        function updatePowerPointSubjectOptions() {
+            pptSubjectOptions.clear();
+            pptSubjectOptionsList.innerHTML = '';
+
+            const selectedDate = pptDateSelect.value;
+            if (!currentData || !selectedDate) {
+                pptSubjectOptionsContainer.style.display = 'none';
+                return;
+            }
+
+            const examsForDate = getPowerPointExamsForDate(selectedDate);
+            if (examsForDate.length === 0) {
+                pptSubjectOptionsContainer.style.display = 'none';
+                return;
+            }
+
+            pptSubjectOptionsContainer.style.display = 'block';
+
+            examsForDate.forEach(exam => {
+                // Initialize subject options with defaults
+                const options = {
+                    qrKode: exam.isTwoPart,  // On for todelt only
+                    word: false,          // Off by default
+                    nettleser: false,     // Off by default
+                    seb: false,           // Off by default
+                    innforingskark: exam.isTwoPart,  // On for todelt
+                    ruteark: exam.isTwoPart,         // On for todelt
+                    linjeark: true        // Always on
+                };
+                pptSubjectOptions.set(exam.fagkode, options);
+
+                // Create subject group
+                const subjectDiv = document.createElement('div');
+                subjectDiv.style.marginBottom = '12px';
+                subjectDiv.style.paddingBottom = '12px';
+                subjectDiv.style.borderBottom = '1px solid #a8d4eb';
+
+                // Subject title
+                const titleDiv = document.createElement('div');
+                titleDiv.style.fontWeight = '600';
+                titleDiv.style.color = '#133b67';
+                titleDiv.style.marginBottom = '8px';
+                titleDiv.textContent = `${exam.fagkode}${exam.fagnavn ? ` - ${exam.fagnavn}` : ''}${exam.isTwoPart ? ' (todelt)' : ''}`;
+                subjectDiv.appendChild(titleDiv);
+
+                // Options grid
+                const optionsDiv = document.createElement('div');
+                optionsDiv.style.display = 'grid';
+                optionsDiv.style.gridTemplateColumns = 'repeat(auto-fill, minmax(140px, 1fr))';
+                optionsDiv.style.gap = '8px';
+                optionsDiv.style.marginLeft = '8px';
+
+                const optionsList = [
+                    { key: 'qrKode', label: 'QR-kode' },
+                    { key: 'word', label: 'Word' },
+                    { key: 'nettleser', label: 'Nettleser' },
+                    { key: 'seb', label: 'SEB' },
+                    { key: 'innforingskark', label: 'Innføringsark' },
+                    { key: 'ruteark', label: 'Ruteark' },
+                    { key: 'linjeark', label: 'Linjeark' }
+                ];
+
+                optionsList.forEach(opt => {
+                    const label = document.createElement('label');
+                    label.style.display = 'flex';
+                    label.style.alignItems = 'center';
+                    label.style.cursor = 'pointer';
+                    label.style.fontSize = '12px';
+                    label.style.whiteSpace = 'nowrap';
+
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = options[opt.key];
+                    checkbox.style.marginRight = '4px';
+                    checkbox.style.width = '14px';
+                    checkbox.style.height = '14px';
+                    checkbox.addEventListener('change', () => {
+                        options[opt.key] = checkbox.checked;
+                    });
+
+                    const text = document.createElement('span');
+                    text.textContent = opt.label;
+
+                    label.appendChild(checkbox);
+                    label.appendChild(text);
+                    optionsDiv.appendChild(label);
+                });
+
+                subjectDiv.appendChild(optionsDiv);
+                pptSubjectOptionsList.appendChild(subjectDiv);
+            });
+        }
+
+        pptDateSelect.addEventListener('change', () => {
+            updatePowerPointSubjectOptions();
+            generatePptBtn.disabled = !pptDateSelect.value;
+        });
+
+        // PPT Supervisor file: Click to upload
+        pptSupervisorUploadArea.addEventListener('click', () => pptSupervisorFile.click());
+
+        // PPT Supervisor file: Drag and drop
+        pptSupervisorUploadArea.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            pptSupervisorUploadArea.classList.add('dragover');
+        });
+
+        pptSupervisorUploadArea.addEventListener('dragleave', () => {
+            pptSupervisorUploadArea.classList.remove('dragover');
+        });
+
+        pptSupervisorUploadArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            pptSupervisorUploadArea.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) {
+                pptSupervisorFile.files = e.dataTransfer.files;
+                pptSupervisorFile.dispatchEvent(new Event('change'));
+            }
+        });
+
+        // Remove supervisor file button
+        pptRemoveSupervisorBtn.addEventListener('click', () => {
+            pptSupervisorData = null;
+            pptSupervisorFile.value = '';
+            pptSupervisorFileName.textContent = '';
+            pptSupervisorFileStatus.textContent = '';
+            pptSupervisorFileInfo.style.display = 'none';
+            pptSupervisorUploadArea.style.display = 'block';
+        });
+
+        pptSupervisorFile.addEventListener('change', (e) => {
+            const file = e.target.files[0];
+            if (!file) {
+                pptSupervisorData = null;
+                pptSupervisorFileName.textContent = '';
+                pptSupervisorFileStatus.textContent = '';
+                pptSupervisorFileInfo.style.display = 'none';
+                pptSupervisorUploadArea.style.display = 'block';
+                return;
+            }
+
+            if (!file.name.match(/\.(xlsx|xls)$/)) {
+                pptSupervisorFileName.textContent = file.name;
+                pptSupervisorFileStatus.textContent = 'Ugyldig filtype - vennligst velg .xlsx eller .xls';
+                pptSupervisorFileStatus.style.color = '#c62828';
+                pptSupervisorFileInfo.style.display = 'block';
+                pptSupervisorUploadArea.style.display = 'none';
+                pptSupervisorData = null;
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (evt) => {
+                try {
+                    const data = new Uint8Array(evt.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    
+                    // Store the full workbook for later date-based filtering
+                    pptSupervisorData = { workbook };
+                    pptSupervisorFileName.textContent = file.name;
+                    pptSupervisorFileStatus.textContent = `✓ Lastet vaktliste med ${workbook.SheetNames.length} ark`;
+                    pptSupervisorFileStatus.style.color = '#2e7d32';
+                    pptSupervisorFileInfo.style.display = 'block';
+                    pptSupervisorUploadArea.style.display = 'none';
+
+                } catch (error) {
+                    pptSupervisorFileName.textContent = file.name;
+                    pptSupervisorFileStatus.textContent = 'Feil ved lesing av fil: ' + error.message;
+                    pptSupervisorFileStatus.style.color = '#c62828';
+                    pptSupervisorFileInfo.style.display = 'block';
+                    pptSupervisorUploadArea.style.display = 'none';
+                    pptSupervisorData = null;
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        });
 
         function populateRoomCopiesList(data) {
             // Get unique rooms for selected dates only
@@ -2544,6 +2950,1132 @@
                 console.error(error);
             } finally {
                 generateQRBtn.disabled = false;
+                spinner.classList.remove('visible');
+            }
+        }
+
+        async function generatePowerPoint() {
+            if (!currentData) {
+                showStatus('Vennligst last opp Excel-fil', 'error');
+                return;
+            }
+
+            const selectedDate = pptDateSelect.value;
+            if (!selectedDate) {
+                showStatus('Vennligst velg én dato for presentasjonen', 'error');
+                return;
+            }
+
+            if (typeof PptxGenJS === 'undefined') {
+                showStatus('PowerPoint-biblioteket ble ikke lastet. Last siden på nytt og prøv igjen.', 'error');
+                return;
+            }
+
+            generatePptBtn.disabled = true;
+            spinner.classList.add('visible');
+            showStatus('Genererer PowerPoint...', 'processing');
+
+            try {
+                const dataForDate = currentData.filter(student => {
+                    const date = formatDate(getEksamensdatoValue(student));
+                    return date === selectedDate;
+                });
+
+                if (dataForDate.length === 0) {
+                    showStatus('Ingen data funnet for valgt dato', 'error');
+                    return;
+                }
+
+                const pptx = new PptxGenJS();
+                pptx.layout = 'LAYOUT_WIDE';
+                pptx.author = 'Kandidatark';
+                pptx.subject = `Eksamen ${selectedDate}`;
+                pptx.title = `Eksamen ${selectedDate}`;
+                pptx.lang = 'nb-NO';
+
+                const subjectsMap = new Map();
+                dataForDate.forEach(student => {
+                    const fagkode = String(getFagkodeValue(student) || '').trim();
+                    const fagnavn = String(getFagnavnValue(student) || '').trim();
+                    if (!fagkode) return;
+
+                    if (!subjectsMap.has(fagkode)) {
+                        subjectsMap.set(fagkode, {
+                            fagkode,
+                            fagnavn,
+                            count: 0,
+                            hjelpemidler: ''
+                        });
+                    }
+
+                    const subject = subjectsMap.get(fagkode);
+                    subject.count += 1;
+                    if (!subject.fagnavn && fagnavn) {
+                        subject.fagnavn = fagnavn;
+                    }
+                });
+
+                const subjects = Array.from(subjectsMap.values()).sort((a, b) => {
+                    const nameA = `${a.fagnavn} ${a.fagkode}`.trim().toLowerCase();
+                    const nameB = `${b.fagnavn} ${b.fagkode}`.trim().toLowerCase();
+                    return nameA.localeCompare(nameB, 'nb');
+                });
+
+                subjects.forEach(subject => {
+                    const info = fetchExamInfo(subject.fagkode);
+                    subject.hjelpemidler = info && info.hjelpemidler ? String(info.hjelpemidler).trim() : '';
+                });
+
+                const groupedSubjectsByHelp = new Map();
+                subjects.forEach(subject => {
+                    const normalizedHelpText = String(subject.hjelpemidler || '')
+                        .replace(/<[^>]*>/g, ' ')
+                        .replace(/\s+/g, ' ')
+                        .trim();
+                    const groupKey = normalizedHelpText.toLowerCase();
+
+                    if (!groupedSubjectsByHelp.has(groupKey)) {
+                        groupedSubjectsByHelp.set(groupKey, {
+                            rawHelpText: normalizedHelpText,
+                            subjects: []
+                        });
+                    }
+
+                    groupedSubjectsByHelp.get(groupKey).subjects.push(subject);
+                });
+                const subjectHelpGroups = Array.from(groupedSubjectsByHelp.values());
+
+                // Marp-inspired custom theme section (applied through PptxGenJS style constants)
+                const marpInspiredTheme = {
+                    colors: {
+                        heading: '133B67',
+                        text: '1E2A35',
+                        accent: '2F6FAF',
+                        subtle: '7F8C99',
+                        background: 'FFFFFF'
+                    },
+                    fonts: {
+                        heading: 'Calibri',
+                        body: 'Calibri'
+                    }
+                };
+
+                const slideWidth = 13.333;
+                const baseHorizontalMargin = 0.8;
+                const horizontalMargin = baseHorizontalMargin * 1.3; // 30% wider margins
+                const contentLeft = horizontalMargin;
+                const contentWidth = slideWidth - (horizontalMargin * 2);
+
+                // Determine which exams have QR codes enabled
+                const examsForQrSlide = getPowerPointExamsForDate(selectedDate)
+                    .filter(exam => {
+                        const options = pptSubjectOptions.get(exam.fagkode);
+                        return options && options.qrKode;
+                    });
+                const includeQrSlide = examsForQrSlide.length > 0;
+
+                // Check if we have supervisor data to display
+                let hasSupervisorData = false;
+                let supervisorMap = new Map(); // fagkode -> array of supervisors
+
+                if (pptSupervisorData && pptSupervisorData.workbook) {
+                    const workbook = pptSupervisorData.workbook;
+                    let supervisorList = [];
+                    
+                    // Check if there are multiple sheets and if one matches the selected date
+                    let sheetToUse = null;
+                    if (workbook.SheetNames.length > 1) {
+                        const dateParts = selectedDate.split('.');
+                        const day = dateParts[0];
+                        const month = dateParts[1];
+                        const year = dateParts[2];
+                        const yearShort = year ? year.slice(-2) : '';
+                        
+                        const dateVariants = [
+                            selectedDate, selectedDate.replace(/\./g, ''), selectedDate.replace(/\./g, '-'),
+                            selectedDate.replace(/\./g, '_'), selectedDate.replace(/\./g, '/'),
+                            `${day}.${month}`, `${day}/${month}`, `${day}-${month}`, `${day}_${month}`, `${day}${month}`,
+                            `${day}.${month}.${yearShort}`, `${day}/${month}/${yearShort}`, `${day}-${month}-${yearShort}`,
+                            `${day}_${month}_${yearShort}`, `${day}${month}${yearShort}`, `${day}.${month}.${year}`,
+                            `${month}.${day}`, `${month}/${day}`
+                        ];
+                        
+                        for (const sheetName of workbook.SheetNames) {
+                            const sheetNameTrimmed = sheetName.trim();
+                            if (dateVariants.some(variant => 
+                                sheetNameTrimmed === variant || 
+                                sheetNameTrimmed.includes(variant) || 
+                                variant.includes(sheetNameTrimmed)
+                            )) {
+                                sheetToUse = workbook.Sheets[sheetName];
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (!sheetToUse) {
+                        sheetToUse = workbook.Sheets[workbook.SheetNames[0]];
+                    }
+                    
+                    const headerPositions = { rom: null, fag: null, hovedvakt: null };
+                    const range = XLSX.utils.decode_range(sheetToUse['!ref']);
+                    
+                    for (let row = range.s.r; row <= range.e.r; row++) {
+                        for (let col = range.s.c; col <= range.e.c; col++) {
+                            const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+                            const cell = sheetToUse[cellAddress];
+                            if (cell && cell.v) {
+                                const cellValue = String(cell.v).trim().toLowerCase();
+                                if (cellValue === 'rom' || cellValue === 'romnummer' || cellValue === 'room') {
+                                    headerPositions.rom = { row, col };
+                                } else if (cellValue === 'fag' || cellValue === 'fagkode' || cellValue === 'subject') {
+                                    headerPositions.fag = { row, col };
+                                } else if (cellValue === 'hovedvakt' || cellValue === 'vakt' || cellValue === 'supervisor') {
+                                    headerPositions.hovedvakt = { row, col };
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (headerPositions.rom || headerPositions.fag || headerPositions.hovedvakt) {
+                        const headerRow = Math.max(
+                            headerPositions.rom?.row ?? 0,
+                            headerPositions.fag?.row ?? 0,
+                            headerPositions.hovedvakt?.row ?? 0
+                        );
+                        
+                        for (let row = headerRow + 1; row <= range.e.r; row++) {
+                            let romnummer = '';
+                            let fag = '';
+                            let hovedvakt = '';
+                            
+                            if (headerPositions.rom) {
+                                const cellAddress = XLSX.utils.encode_cell({ r: row, c: headerPositions.rom.col });
+                                const cell = sheetToUse[cellAddress];
+                                romnummer = cell && cell.v ? String(cell.v).trim() : '';
+                            }
+                            
+                            if (headerPositions.fag) {
+                                const cellAddress = XLSX.utils.encode_cell({ r: row, c: headerPositions.fag.col });
+                                const cell = sheetToUse[cellAddress];
+                                fag = cell && cell.v ? String(cell.v).trim() : '';
+                            }
+                            
+                            if (headerPositions.hovedvakt) {
+                                const cellAddress = XLSX.utils.encode_cell({ r: row, c: headerPositions.hovedvakt.col });
+                                const cell = sheetToUse[cellAddress];
+                                hovedvakt = cell && cell.v ? String(cell.v).trim() : '';
+                            }
+                            
+                            if (romnummer || hovedvakt || fag) {
+                                supervisorList.push({
+                                    romnummer: romnummer,
+                                    hovedvakt: hovedvakt,
+                                    fag: fag
+                                });
+                            } else if (romnummer === '' && fag === '' && hovedvakt === '') {
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Build supervisor map for subject display
+                    if (supervisorList.length > 0) {
+                        hasSupervisorData = true;
+                        supervisorList.forEach(item => {
+                            if (item.fag && item.hovedvakt) {
+                                const fagFromTable = String(item.fag).trim();
+                                const fagNormalized = fagFromTable.toUpperCase();
+                                
+                                // Try to match this fag value against known subjects
+                                subjects.forEach(subject => {
+                                    const matchesFagkode = subject.fagkode.toUpperCase() === fagNormalized;
+                                    const matchesFagnavn = subject.fagnavn && subject.fagnavn.toUpperCase() === fagNormalized;
+                                    
+                                    if (matchesFagkode || matchesFagnavn) {
+                                        if (!supervisorMap.has(subject.fagkode)) {
+                                            supervisorMap.set(subject.fagkode, []);
+                                        }
+                                        supervisorMap.get(subject.fagkode).push(item.hovedvakt);
+                                    }
+                                });
+                            }
+                        });
+                    }
+                }
+
+                const slideCount = 2 + subjectHelpGroups.length + (hasSupervisorData ? 1 : 0) + (includeQrSlide ? 1 : 0) + 8; // 8 instructional slides at end
+                let slideNumber = 0;
+
+                function applySlideBackground(slide) {
+                    slide.background = { color: marpInspiredTheme.colors.background };
+                }
+
+                function addSlideNumber(slide, number, total) {
+                    slide.addText(`${number}/${total}`, {
+                        x: 12.35,
+                        y: 7.1,
+                        w: 0.8,
+                        h: 0.2,
+                        fontFace: marpInspiredTheme.fonts.body,
+                        fontSize: 9,
+                        color: marpInspiredTheme.colors.subtle,
+                        align: 'right'
+                    });
+                }
+
+                function addMainHeading(slide, text, y = 0.45) {
+                    slide.addText(text, {
+                        x: contentLeft,
+                        y,
+                        w: contentWidth,
+                        h: 0.8,
+                        fontFace: marpInspiredTheme.fonts.heading,
+                        bold: true,
+                        fontSize: 34,
+                        color: marpInspiredTheme.colors.heading
+                    });
+                }
+
+                const titleSlide = pptx.addSlide();
+                slideNumber += 1;
+                applySlideBackground(titleSlide);
+                titleSlide.addText('Morgenmøte', {
+                    x: contentLeft,
+                    y: 2.1,
+                    w: contentWidth,
+                    h: 1.0,
+                    fontFace: marpInspiredTheme.fonts.heading,
+                    bold: true,
+                    fontSize: 52,
+                    color: marpInspiredTheme.colors.heading,
+                    align: 'center'
+                });
+                titleSlide.addText(selectedDate, {
+                    x: contentLeft,
+                    y: 3.25,
+                    w: contentWidth,
+                    h: 0.7,
+                    fontFace: marpInspiredTheme.fonts.body,
+                    fontSize: 30,
+                    color: marpInspiredTheme.colors.text,
+                    align: 'center'
+                });
+                addSlideNumber(titleSlide, slideNumber, slideCount);
+
+                const infoSlide = pptx.addSlide();
+                slideNumber += 1;
+                applySlideBackground(infoSlide);
+                addMainHeading(infoSlide, `Informasjon ${selectedDate}`);
+                infoSlide.addText(`Totalt antall elever: ${dataForDate.length}`, {
+                    x: contentLeft,
+                    y: 1.35,
+                    w: contentWidth,
+                    h: 0.35,
+                    fontFace: marpInspiredTheme.fonts.body,
+                    bold: true,
+                    fontSize: 18,
+                    color: marpInspiredTheme.colors.text
+                });
+
+                // Subject overview (kept compact with white space)
+                const maxSubjectLines = 9;
+                const subjectTextArray = [];
+                
+                subjects.slice(0, maxSubjectLines).forEach(subject => {
+                    const subjectText = `${subject.fagkode}${subject.fagnavn ? ` - ${subject.fagnavn}` : ''}: ${subject.count}`;
+                    subjectTextArray.push({
+                        text: subjectText + '\n',
+                        options: {
+                            fontFace: marpInspiredTheme.fonts.body,
+                            fontSize: 18,
+                            color: marpInspiredTheme.colors.text
+                        }
+                    });
+                });
+
+                if (subjects.length > maxSubjectLines) {
+                    subjectTextArray.push({
+                        text: `+ ${subjects.length - maxSubjectLines} flere fag\n`,
+                        options: {
+                            fontFace: marpInspiredTheme.fonts.body,
+                            italic: true,
+                            fontSize: 18,
+                            color: marpInspiredTheme.colors.subtle
+                        }
+                    });
+                }
+
+                // Add combined subject list
+                if (subjectTextArray.length > 0) {
+                    infoSlide.addText(subjectTextArray, {
+                        x: contentLeft + 0.2,
+                        y: 1.9,
+                        w: contentWidth - 0.4,
+                        h: 3.0,
+                        fontFace: marpInspiredTheme.fonts.body,
+                        fontSize: 18,
+                        color: marpInspiredTheme.colors.text,
+                        valign: 'top',
+                        fit: 'shrink'
+                    });
+                }
+
+                const fixedBulletLines = [
+                    'Dere er 3 vakter per rom.',
+                    'I perioden 11.30 til 12.00 vil det kunne være kun 2 vakter.',
+                    'Rullér på lufting og kaffepauser',
+                    'Bruk av mobil kun ved behov for å for å ta kontakt med ledelsen eller andre nødsituasjoner'
+                ];
+
+                // Combine bullet points into one text box
+                const bulletTextArray = [];
+                fixedBulletLines.slice(0, 5).forEach(line => {
+                    bulletTextArray.push({
+                        text: '  • ' + line + '\n',
+                        options: {
+                            fontFace: marpInspiredTheme.fonts.body,
+                            fontSize: 18,
+                            color: marpInspiredTheme.colors.text
+                        }
+                    });
+                });
+
+                if (bulletTextArray.length > 0) {
+                    infoSlide.addText(bulletTextArray, {
+                        x: contentLeft + 0.25,
+                        y: 5.05,
+                        w: contentWidth - 0.5,
+                        h: 2.0,
+                        fontFace: marpInspiredTheme.fonts.body,
+                        fontSize: 18,
+                        color: marpInspiredTheme.colors.text,
+                        valign: 'top',
+                        fit: 'shrink'
+                    });
+                }
+                addSlideNumber(infoSlide, slideNumber, slideCount);
+
+                // Create Vaktoversikt slide only if supervisor data exists
+                if (hasSupervisorData) {
+                    const overviewSlide = pptx.addSlide();
+                    slideNumber += 1;
+                    applySlideBackground(overviewSlide);
+                    overviewSlide.addText('Vaktoversikt', {
+                        x: contentLeft,
+                        y: 0.5,
+                        w: contentWidth,
+                        h: 0.7,
+                        fontFace: marpInspiredTheme.fonts.heading,
+                        bold: true,
+                        fontSize: 38,
+                        color: marpInspiredTheme.colors.heading,
+                        align: 'center'
+                    });
+
+                    // Add supervisor table
+                    if (pptSupervisorData && pptSupervisorData.workbook) {
+                        const workbook = pptSupervisorData.workbook;
+                        let supervisorList = [];
+                        
+                        let sheetToUse = null;
+                        if (workbook.SheetNames.length > 1) {
+                            const dateParts = selectedDate.split('.');
+                            const day = dateParts[0];
+                            const month = dateParts[1];
+                            const year = dateParts[2];
+                            const yearShort = year ? year.slice(-2) : '';
+                            
+                            const dateVariants = [
+                                selectedDate, selectedDate.replace(/\./g, ''), selectedDate.replace(/\./g, '-'),
+                                selectedDate.replace(/\./g, '_'), selectedDate.replace(/\./g, '/'),
+                                `${day}.${month}`, `${day}/${month}`, `${day}-${month}`, `${day}_${month}`, `${day}${month}`,
+                                `${day}.${month}.${yearShort}`, `${day}/${month}/${yearShort}`, `${day}-${month}-${yearShort}`,
+                                `${day}_${month}_${yearShort}`, `${day}${month}${yearShort}`, `${day}.${month}.${year}`,
+                                `${month}.${day}`, `${month}/${day}`
+                            ];
+                            
+                            for (const sheetName of workbook.SheetNames) {
+                                const sheetNameTrimmed = sheetName.trim();
+                                if (dateVariants.some(variant => 
+                                    sheetNameTrimmed === variant || 
+                                    sheetNameTrimmed.includes(variant) || 
+                                    variant.includes(sheetNameTrimmed)
+                                )) {
+                                    sheetToUse = workbook.Sheets[sheetName];
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (!sheetToUse) {
+                            sheetToUse = workbook.Sheets[workbook.SheetNames[0]];
+                        }
+                        
+                        const headerPositions = { rom: null, fag: null, hovedvakt: null };
+                        const range = XLSX.utils.decode_range(sheetToUse['!ref']);
+                        
+                        for (let row = range.s.r; row <= range.e.r; row++) {
+                            for (let col = range.s.c; col <= range.e.c; col++) {
+                                const cellAddress = XLSX.utils.encode_cell({ r: row, c: col });
+                                const cell = sheetToUse[cellAddress];
+                                if (cell && cell.v) {
+                                    const cellValue = String(cell.v).trim().toLowerCase();
+                                    if (cellValue === 'rom' || cellValue === 'romnummer' || cellValue === 'room') {
+                                        headerPositions.rom = { row, col };
+                                    } else if (cellValue === 'fag' || cellValue === 'fagkode' || cellValue === 'subject') {
+                                        headerPositions.fag = { row, col };
+                                    } else if (cellValue === 'hovedvakt' || cellValue === 'vakt' || cellValue === 'supervisor') {
+                                        headerPositions.hovedvakt = { row, col };
+                                    }
+                                }
+                            }
+                        }
+                        
+                        if (headerPositions.rom || headerPositions.fag || headerPositions.hovedvakt) {
+                            const headerRow = Math.max(
+                                headerPositions.rom?.row ?? 0,
+                                headerPositions.fag?.row ?? 0,
+                                headerPositions.hovedvakt?.row ?? 0
+                            );
+                            
+                            for (let row = headerRow + 1; row <= range.e.r; row++) {
+                                let romnummer = '';
+                                let fag = '';
+                                let hovedvakt = '';
+                                
+                                if (headerPositions.rom) {
+                                    const cellAddress = XLSX.utils.encode_cell({ r: row, c: headerPositions.rom.col });
+                                    const cell = sheetToUse[cellAddress];
+                                    romnummer = cell && cell.v ? String(cell.v).trim() : '';
+                                }
+                                
+                                if (headerPositions.fag) {
+                                    const cellAddress = XLSX.utils.encode_cell({ r: row, c: headerPositions.fag.col });
+                                    const cell = sheetToUse[cellAddress];
+                                    fag = cell && cell.v ? String(cell.v).trim() : '';
+                                }
+                                
+                                if (headerPositions.hovedvakt) {
+                                    const cellAddress = XLSX.utils.encode_cell({ r: row, c: headerPositions.hovedvakt.col });
+                                    const cell = sheetToUse[cellAddress];
+                                    hovedvakt = cell && cell.v ? String(cell.v).trim() : '';
+                                }
+                                
+                                if (romnummer || hovedvakt || fag) {
+                                    supervisorList.push({
+                                        romnummer: romnummer,
+                                        hovedvakt: hovedvakt,
+                                        fag: fag
+                                    });
+                                } else if (romnummer === '' && fag === '' && hovedvakt === '') {
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (supervisorList.length > 0) {
+                            let maxRomLength = 3;
+                            supervisorList.forEach(item => {
+                                if (item.romnummer && item.romnummer.length > maxRomLength) {
+                                    maxRomLength = item.romnummer.length;
+                                }
+                            });
+                            
+                            const romColWidth = Math.max(1.2, (maxRomLength * 0.15) + 0.4);
+                            const tableWidth = 9.5;
+                            const remainingWidth = tableWidth - romColWidth;
+                            const hovedvaktColWidth = remainingWidth * 0.45;
+                            const fagColWidth = remainingWidth * 0.55;
+                            
+                            const tableRows = [];
+                            
+                            tableRows.push([
+                                { text: 'Rom', options: { bold: true, fontSize: 20, color: marpInspiredTheme.colors.heading, fill: { color: 'E8F4F8' } } },
+                                { text: 'Hovedvakt', options: { bold: true, fontSize: 20, color: marpInspiredTheme.colors.heading, fill: { color: 'E8F4F8' } } },
+                                { text: 'Fag', options: { bold: true, fontSize: 20, color: marpInspiredTheme.colors.heading, fill: { color: 'E8F4F8' } } }
+                            ]);
+
+                            supervisorList.forEach(item => {
+                                tableRows.push([
+                                    { text: item.romnummer || '', options: { fontSize: 18, color: marpInspiredTheme.colors.text } },
+                                    { text: item.hovedvakt || '', options: { fontSize: 18, color: marpInspiredTheme.colors.text } },
+                                    { text: item.fag || '', options: { fontSize: 18, color: marpInspiredTheme.colors.text } }
+                                ]);
+                            });
+
+                            overviewSlide.addTable(tableRows, {
+                                x: contentLeft + (contentWidth - tableWidth) / 2,
+                                y: 1.5,
+                                w: tableWidth,
+                                colW: [romColWidth, hovedvaktColWidth, fagColWidth],
+                                border: { pt: 1, color: marpInspiredTheme.colors.subtle },
+                                fontFace: marpInspiredTheme.fonts.body,
+                                align: 'center',
+                                valign: 'middle'
+                            });
+                        }
+                    }
+
+                    addSlideNumber(overviewSlide, slideNumber, slideCount);
+                }
+
+                subjectHelpGroups.forEach(group => {
+                    const subjectSlide = pptx.addSlide();
+                    slideNumber += 1;
+                    applySlideBackground(subjectSlide);
+
+                    // Two-column layout
+                    const leftColWidth = 4.2;
+                    const rightColWidth = contentWidth - leftColWidth - 0.3;
+                    const leftColX = contentLeft;
+                    const rightColX = contentLeft + leftColWidth + 0.3;
+
+                    // Build combined text for left column (subjects and supervisors)
+                    const leftColumnText = [];
+                    group.subjects.slice(0, 7).forEach(groupSubject => {
+                        const info = fetchExamInfo(groupSubject.fagkode);
+                        let durationText = '';
+                        if (info && info.del1) {
+                            durationText = `${info.del1.start} - ${info.del1.end}`;
+                        }
+
+                        const fagText = `${groupSubject.fagnavn || groupSubject.fagkode}${durationText ? ` (${durationText})` : ''}`;
+                        
+                        // Add subject name with bold formatting
+                        leftColumnText.push({
+                            text: fagText + '\n',
+                            options: {
+                                fontFace: marpInspiredTheme.fonts.body,
+                                bold: true,
+                                fontSize: 20,
+                                color: marpInspiredTheme.colors.heading
+                            }
+                        });
+
+                        // Add supervisors alphabetically if available
+                        if (supervisorMap.has(groupSubject.fagkode)) {
+                            const supervisors = Array.from(new Set(supervisorMap.get(groupSubject.fagkode)))
+                                .filter(s => s && s.trim())
+                                .sort((a, b) => a.localeCompare(b, 'nb'));
+                            
+                            supervisors.forEach(supervisor => {
+                                leftColumnText.push({
+                                    text: '  ' + supervisor + '\n',
+                                    options: {
+                                        fontFace: marpInspiredTheme.fonts.body,
+                                        fontSize: 18,
+                                        color: marpInspiredTheme.colors.subtle
+                                    }
+                                });
+                            });
+                        }
+
+                        // Add spacing between subjects
+                        leftColumnText.push({
+                            text: '\n',
+                            options: { fontSize: 8 }
+                        });
+                    });
+
+                    // Add combined text block for left column with autofit
+                    if (leftColumnText.length > 0) {
+                        subjectSlide.addText(leftColumnText, {
+                            x: leftColX + 0.15,
+                            y: 1.7,
+                            w: leftColWidth - 0.3,
+                            h: 5.5,
+                            fontFace: marpInspiredTheme.fonts.body,
+                            fontSize: 20,
+                            color: marpInspiredTheme.colors.text,
+                            valign: 'top',
+                            fit: 'shrink'
+                        });
+                    }
+
+                    // Right column: Todelt info and selected options
+                    let infoY = 1.7;
+
+                    // Check if any subject is todelt
+                    const hasTodelt = group.subjects.some(subj => {
+                        const info = fetchExamInfo(subj.fagkode);
+                        return info && info.del1 && info.del2;
+                    });
+
+                    if (hasTodelt) {
+                        subjectSlide.addText('Todelt eksamen', {
+                            x: rightColX + 0.1,
+                            y: infoY,
+                            w: rightColWidth - 0.2,
+                            h: 0.3,
+                            fontFace: marpInspiredTheme.fonts.body,
+                            bold: true,
+                            fontSize: 20,
+                            color: marpInspiredTheme.colors.subtle
+                        });
+                        infoY += 0.35;
+
+                        subjectSlide.addText('Del 1: Papir', {
+                            x: rightColX + 0.15,
+                            y: infoY,
+                            w: rightColWidth - 0.3,
+                            h: 0.28,
+                            fontFace: marpInspiredTheme.fonts.body,
+                            fontSize: 18,
+                            color: marpInspiredTheme.colors.text
+                        });
+                        infoY += 0.3;
+
+                        subjectSlide.addText('Del 2: Digital/Papir', {
+                            x: rightColX + 0.15,
+                            y: infoY,
+                            w: rightColWidth - 0.3,
+                            h: 0.28,
+                            fontFace: marpInspiredTheme.fonts.body,
+                            fontSize: 18,
+                            color: marpInspiredTheme.colors.text
+                        });
+                        infoY += 0.35;
+                    }
+
+                    // Display selected options (eksamensalternativ)
+                    const selectedOptionsRaw = [];
+                    const optionLabelMap = {
+                        qrKode: 'QR-kode',
+                        word: 'Word',
+                        nettleser: 'Nettleser',
+                        seb: 'SEB',
+                        innforingskark: 'Innføringsark',
+                        ruteark: 'Ruteark',
+                        linjeark: 'Linjeark'
+                    };
+
+                    // Collect all enabled options from the first subject (they should be the same for grouped subjects)
+                    if (group.subjects.length > 0) {
+                        const firstSubject = group.subjects[0];
+                        const options = pptSubjectOptions.get(firstSubject.fagkode);
+                        if (options) {
+                            Object.keys(optionLabelMap).forEach(key => {
+                                if (options[key] === true && key !== 'qrKode') {  // Exclude QR-kode from display
+                                    selectedOptionsRaw.push({ key, label: optionLabelMap[key] });
+                                }
+                            });
+                        }
+                    }
+
+                    // Format options, combining Ruteark and Linjeark if both are present
+                    const selectedOptions = [];
+                    let hasRuteark = false;
+                    let hasLinjeark = false;
+                    
+                    selectedOptionsRaw.forEach(opt => {
+                        if (opt.key === 'ruteark') {
+                            hasRuteark = true;
+                        } else if (opt.key === 'linjeark') {
+                            hasLinjeark = true;
+                        } else {
+                            selectedOptions.push(opt.label);
+                        }
+                    });
+
+                    // Combine Ruteark and Linjeark if both selected
+                    if (hasRuteark && hasLinjeark) {
+                        selectedOptions.push('Ruteark og Linjeark');
+                    } else if (hasRuteark) {
+                        selectedOptions.push('Ruteark');
+                    } else if (hasLinjeark) {
+                        selectedOptions.push('Linjeark');
+                    }
+
+                    // Also display hjelpemidler from database if available
+                    const rawText = group.rawHelpText;
+                    const helpLines = splitIntoSentences(rawText).slice(0, 3);
+
+                    // Build combined text for right column (hjelpemidler and options)
+                    const rightColumnText = [];
+                    
+                    if (helpLines.length > 0) {
+                        // Add "Hjelpemidler" title
+                        rightColumnText.push({
+                            text: 'Hjelpemidler\n',
+                            options: {
+                                fontFace: marpInspiredTheme.fonts.body,
+                                bold: true,
+                                fontSize: 20,
+                                color: marpInspiredTheme.colors.subtle
+                            }
+                        });
+
+                        // Add each help line as bullet point
+                        helpLines.forEach(line => {
+                            rightColumnText.push({
+                                text: '  • ' + line + '\n',
+                                options: {
+                                    fontFace: marpInspiredTheme.fonts.body,
+                                    fontSize: 18,
+                                    color: marpInspiredTheme.colors.text
+                                }
+                            });
+                        });
+
+                        // Add spacing between sections
+                        rightColumnText.push({
+                            text: '\n',
+                            options: { fontSize: 12 }
+                        });
+                    }
+
+                    // Display options if any are selected
+                    if (selectedOptions.length > 0) {
+                        // Add "Annet" title
+                        rightColumnText.push({
+                            text: 'Annet\n',
+                            options: {
+                                fontFace: marpInspiredTheme.fonts.body,
+                                bold: true,
+                                fontSize: 20,
+                                color: marpInspiredTheme.colors.subtle
+                            }
+                        });
+
+                        // Add each option as bullet point
+                        selectedOptions.forEach(option => {
+                            rightColumnText.push({
+                                text: '  • ' + option + '\n',
+                                options: {
+                                    fontFace: marpInspiredTheme.fonts.body,
+                                    fontSize: 18,
+                                    color: marpInspiredTheme.colors.text
+                                }
+                            });
+                        });
+                    }
+
+                    // Add combined text block for right column with autofit
+                    if (rightColumnText.length > 0) {
+                        subjectSlide.addText(rightColumnText, {
+                            x: rightColX,
+                            y: infoY,
+                            w: rightColWidth,
+                            h: 5.5,
+                            fontFace: marpInspiredTheme.fonts.body,
+                            fontSize: 18,
+                            color: marpInspiredTheme.colors.text,
+                            valign: 'top',
+                            fit: 'shrink'
+                        });
+                    }
+
+                    addSlideNumber(subjectSlide, slideNumber, slideCount);
+                });
+
+                if (includeQrSlide) {
+                    const qrSlide = pptx.addSlide();
+                    slideNumber += 1;
+                    applySlideBackground(qrSlide);
+
+                    addMainHeading(qrSlide, 'QR-koder');
+                    qrSlide.addText('Følgende eksamener bruker QR-koder for skanning:', {
+                        x: contentLeft,
+                        y: 1.45,
+                        w: contentWidth,
+                        h: 0.35,
+                        fontFace: marpInspiredTheme.fonts.body,
+                        fontSize: 20,
+                        bold: true,
+                        color: marpInspiredTheme.colors.text
+                    });
+
+                    if (examsForQrSlide.length === 0) {
+                        qrSlide.addText('Ingen eksamener er valgt for QR-koder.', {
+                            x: contentLeft + 0.2,
+                            y: 1.95,
+                            w: contentWidth - 0.4,
+                            h: 0.35,
+                            fontFace: marpInspiredTheme.fonts.body,
+                            fontSize: 18,
+                            italic: true,
+                            color: marpInspiredTheme.colors.subtle
+                        });
+                    } else {
+                        // Combine QR exam list into one text box
+                        const qrListTextArray = [];
+                        examsForQrSlide.slice(0, 8).forEach(exam => {
+                            const displayName = exam.fagnavn || exam.fagkode;
+                            qrListTextArray.push({
+                                text: '  • ' + displayName + '\n',
+                                options: {
+                                    fontFace: marpInspiredTheme.fonts.body,
+                                    fontSize: 18,
+                                    color: marpInspiredTheme.colors.text
+                                }
+                            });
+                        });
+
+                        if (qrListTextArray.length > 0) {
+                            qrSlide.addText(qrListTextArray, {
+                                x: contentLeft + 0.2,
+                                y: 1.9,
+                                w: contentWidth - 0.4,
+                                h: 2.2,
+                                fontFace: marpInspiredTheme.fonts.body,
+                                fontSize: 18,
+                                color: marpInspiredTheme.colors.text,
+                                valign: 'top',
+                                fit: 'shrink'
+                            });
+                        }
+                    }
+
+                    qrSlide.addText(
+                        'Det er laget QR-kode-ark som skal matches opp mot innlevert oppgave på Del 1.\nElevene får disse utdelt og legger selv oppå besvarelsen når den leveres.\nVakt sjekker at kandidatnummer matcher.\nLegg alle besvarelsene i samme bunke, med QR-kodearket før hver besvarelse.\nHvis elever ønsker levere deler av Del 2 på papir, får de ny QR-kode for dette.',
+                        {
+                            x: contentLeft,
+                            y: 4.25,
+                            w: contentWidth - 2.9,
+                            h: 2.5,
+                            fontFace: marpInspiredTheme.fonts.body,
+                            fontSize: 18,
+                            color: marpInspiredTheme.colors.text,
+                            valign: 'top',
+                            lineSpacing: 24
+                        }
+                    );
+
+                    const demoQrValue = 'SAS123-V-01';
+                    const demoQr = new QRious({
+                        value: demoQrValue,
+                        size: 170,
+                        level: 'H',
+                        padding: 2
+                    });
+                    const demoQrDataUrl = demoQr.toDataURL();
+
+                    qrSlide.addImage({
+                        data: demoQrDataUrl,
+                        x: contentLeft + contentWidth - 2.4,
+                        y: 3.0,
+                        w: 2.2,
+                        h: 2.2
+                    });
+
+                    addSlideNumber(qrSlide, slideNumber, slideCount);
+                }
+
+                // Add instructional slides from Morgenmøte template
+                const instructionalSlides = [
+                    {
+                        title: 'Oppstart',
+                        content: [
+                            { text: 'Vakter:', bold: true },
+                            { text: 'Del ut kladdeark (linjer/ruter avhengig av fag)', bullet: true },
+                            { text: 'Del ut innføringsark hvis faget trenger det.', bullet: true },
+                            { text: 'Skriv inn Dagspassord for elevene når de er klar. Dette må en vakt gjøre, elevene skal ikke få passordet selv.', bullet: true },
+                            { text: 'Kandidatene skal levere inn AVSKRUDD mobil. Disse merkes med navn på Post-It-lapp og plasseres på bord foran/bak i lokalet', bullet: true }
+                        ]
+                    },
+                    {
+                        title: 'Før/Under eksamen',
+                        content: [
+                            { text: 'Før:', bold: true },
+                            { text: 'Sekker og jakker skal legges bakerst i klasserommet.', bullet: true },
+                            { text: 'For to-delt eksamen, hjelpemidler til del to legges på gulvet ved siden av pulten.', bullet: true },
+                            { text: 'Under:', bold: true },
+                            { text: 'Vakter har ikke lov til å hjelpe elever med forståelse av ord eller oppgaver.', bullet: true },
+                            { text: 'Viktig at vakter følger med hele tiden, bruk av mobil/PC/bøker og annet inne i klasserommet må unngås.', bullet: true },
+                            { text: 'Informer når det er en time igjen av eksamen', bullet: true }
+                        ]
+                    },
+                    {
+                        title: 'Under eksamen',
+                        content: [
+                            { text: 'Elever kan luftes 1 og 1 etter det har gått 1 time', bullet: true },
+                            { text: 'Elever som kommer inntil 1 time sent har lov til å starte eksamen', bullet: true },
+                            { text: 'Elev må rekke opp hånden og vente på vakt for å kunne gå på toalettet. Vakt inne i klasserom henter vakt på gangen som følger elev på toalettet.', bullet: true },
+                            { text: 'Det må være 2 vakter på klasserommene til enhver tid', bullet: true },
+                            { text: 'Ved mistanke om juks/fusk, send melding eller kom innom og hent eksamensansvarlig eller en annen fra skolens ledelse.', bullet: true }
+                        ]
+                    },
+                    {
+                        title: 'Innlevering (alle)',
+                        content: [
+                            { text: 'Vaktene på rommet bes sortere i følgende bunker slik at skolen klarer holde oversikt (lurt å gjøre fortløpende når elever har levert):', bold: true },
+                            { text: 'De fargede arkene i bunke sorter på farge', bullet: true },
+                            { text: 'Arket med smilefjeset på i en annen bunke', bullet: true },
+                            { text: 'Navn/kandidatnummer i en tredje bunke', bullet: true },
+                            { text: 'Kladdeark i en fjerde', bullet: true },
+                            { text: 'Eksamenshefter for seg', bullet: true },
+                            { text: 'Eventuelle besvarelser i en siste (viktigst).', bullet: true },
+                            { text: 'Bunkene kan legges inni kladdeark som merkes med hva som er inni og romnummer.', bullet: false }
+                        ]
+                    },
+                    {
+                        title: 'Innlevering digitalt (Word)',
+                        content: [
+                            { text: 'Elevene leverer fil digitalt. Husk topptekst med info.', bullet: true },
+                            { text: 'Kladdeark leveres inn (elevene må skrive kandidatnummer på kladdearket før de går)', bullet: true },
+                            { text: 'De skal rekke opp hånda når de leverer. Viktig at de dobbeltsjekker at de har lastet opp riktig fil ved å åpne den FØR de leverer. De som leser opp oppstart i rommet gir ekstra beskjed om viktigheten av dette.', bullet: true },
+                            { text: 'Vakter ber elevene sjekke filen at filen de har lastet opp er riktig.', bullet: true }
+                        ]
+                    },
+                    {
+                        title: 'Innlevering på papir',
+                        content: [
+                            { text: 'Vaktene sjekker at all topptekst er fylt ut riktig (kandidatnummer, fagkode, sidetall og antall ark)', bullet: true },
+                            { text: 'Vakt sjekker at ark med QR kode stemmer med kandidatnummer. Legg alle besvarelsene i samme bunke, med QR-kodearket før hver besvarelse', bullet: true },
+                            { text: 'Kladdeark leveres inn (elevene må skrive kandidatnummer på kladdearket før de går)', bullet: true }
+                        ]
+                    },
+                    {
+                        title: 'Elever med utvidet tid',
+                        content: [
+                            { text: 'Egen oversikt over elever med tilrettelegging, dette er informasjon som er unntatt offentligheten, så ber om at den passes godt på.', bullet: false },
+                            { text: 'Får du beskjed av elev om at de har rett på ekstra tid el.l. men vedkommende ikke står på listen, ta kontakt med eksamensansvarlig', bullet: false }
+                        ]
+                    },
+                    {
+                        title: 'Trenger dere hjelp?',
+                        content: []
+                    }
+                ];
+
+                // Add instructional slides
+                instructionalSlides.forEach(slideData => {
+                    const instructSlide = pptx.addSlide();
+                    slideNumber += 1;
+                    applySlideBackground(instructSlide);
+
+                    addMainHeading(instructSlide, slideData.title);
+                    
+                    // Special handling for "Trenger dere hjelp?" slide
+                    if (slideData.title === 'Trenger dere hjelp?') {
+                        // Add kontaktpersoner table
+                        if (kontaktpersonerData.length > 0) {
+                            const tableRows = [];
+                            
+                            // Add header row
+                            tableRows.push([
+                                { text: 'Navn', options: { bold: true, fontSize: 20, color: marpInspiredTheme.colors.heading, fill: { color: 'E8F4F8' } } },
+                                { text: 'Rolle', options: { bold: true, fontSize: 20, color: marpInspiredTheme.colors.heading, fill: { color: 'E8F4F8' } } },
+                                { text: 'Telefonnummer', options: { bold: true, fontSize: 20, color: marpInspiredTheme.colors.heading, fill: { color: 'E8F4F8' } } }
+                            ]);
+
+                            // Add data rows
+                            kontaktpersonerData.forEach(person => {
+                                tableRows.push([
+                                    { text: person.navn || '', options: { fontSize: 18, color: marpInspiredTheme.colors.text } },
+                                    { text: person.rolle || '', options: { fontSize: 18, color: marpInspiredTheme.colors.text } },
+                                    { text: person.telefonnummer || '', options: { fontSize: 18, color: marpInspiredTheme.colors.text } }
+                                ]);
+                            });
+
+                            const tableWidth = 9.5;
+                            instructSlide.addTable(tableRows, {
+                                x: contentLeft + (contentWidth - tableWidth) / 2,
+                                y: 1.8,
+                                w: tableWidth,
+                                colW: [3.5, 3.0, 3.0],
+                                border: { pt: 1, color: marpInspiredTheme.colors.subtle },
+                                fontFace: marpInspiredTheme.fonts.body,
+                                align: 'center',
+                                valign: 'middle'
+                            });
+                        } else {
+                            // No contact persons added
+                            instructSlide.addText('Ingen kontaktpersoner lagt til', {
+                                x: contentLeft,
+                                y: 2.0,
+                                w: contentWidth,
+                                h: 0.5,
+                                fontFace: marpInspiredTheme.fonts.body,
+                                fontSize: 18,
+                                italic: true,
+                                color: marpInspiredTheme.colors.subtle,
+                                align: 'center'
+                            });
+                        }
+                    } else {
+                        // Regular instructional slide content
+                        // Combine all content items into one text box
+                        const contentTextArray = [];
+                        slideData.content.forEach(item => {
+                            const fontSize = item.bold ? 20 : 18;
+                            const isBold = item.bold || false;
+                            
+                            if (item.bullet) {
+                                contentTextArray.push({
+                                    text: '  • ' + item.text + '\n',
+                                    options: {
+                                        fontFace: marpInspiredTheme.fonts.body,
+                                        fontSize: fontSize,
+                                        bold: isBold,
+                                        color: marpInspiredTheme.colors.text
+                                    }
+                                });
+                            } else {
+                                if (item.text === '') {
+                                    contentTextArray.push({
+                                        text: '\n',
+                                        options: { fontSize: 8 }
+                                    });
+                                } else {
+                                    contentTextArray.push({
+                                        text: item.text + '\n',
+                                        options: {
+                                            fontFace: marpInspiredTheme.fonts.body,
+                                            fontSize: fontSize,
+                                            bold: isBold,
+                                            color: marpInspiredTheme.colors.text
+                                        }
+                                    });
+                                }
+                            }
+                        });
+
+                        // Add combined text block with autofit
+                        if (contentTextArray.length > 0) {
+                            instructSlide.addText(contentTextArray, {
+                                x: contentLeft + 0.2,
+                                y: 1.45,
+                                w: contentWidth - 0.4,
+                                h: 5.8,
+                                fontFace: marpInspiredTheme.fonts.body,
+                                fontSize: 18,
+                                color: marpInspiredTheme.colors.text,
+                                valign: 'top',
+                                fit: 'shrink',
+                                lineSpacing: 32
+                            });
+                        }
+                    }
+
+                    addSlideNumber(instructSlide, slideNumber, slideCount);
+                });
+
+                // Generate and download the file
+                const fileName = `Morgenmote_Eksamen_${selectedDate.replace(/\./g, '-')}.pptx`;
+                const blob = await pptx.write({ outputType: 'blob' });
+                
+                // Create a download link and trigger download
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = fileName;
+                document.body.appendChild(link);
+                link.click();
+                
+                // Clean up: remove link and revoke blob URL after a short delay
+                setTimeout(() => {
+                    document.body.removeChild(link);
+                    URL.revokeObjectURL(url);
+                }, 100);
+                
+                showStatus(`PowerPoint generert for ${selectedDate}`, 'success');
+            } catch (error) {
+                showStatus('Feil ved generering av PowerPoint: ' + error.message, 'error');
+                console.error(error);
+            } finally {
+                generatePptBtn.disabled = !pptDateSelect.value;
                 spinner.classList.remove('visible');
             }
         }
