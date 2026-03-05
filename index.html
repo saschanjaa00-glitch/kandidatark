@@ -3317,21 +3317,13 @@
                         hasSupervisorData = true;
                         supervisorList.forEach(item => {
                             if (item.fag && item.hovedvakt) {
-                                const fagFromTable = String(item.fag).trim();
-                                const fagNormalized = fagFromTable.toUpperCase();
-                                
-                                // Try to match this fag value against known subjects
-                                subjects.forEach(subject => {
-                                    const matchesFagkode = subject.fagkode.toUpperCase() === fagNormalized;
-                                    const matchesFagnavn = subject.fagnavn && subject.fagnavn.toUpperCase() === fagNormalized;
-                                    
-                                    if (matchesFagkode || matchesFagnavn) {
-                                        if (!supervisorMap.has(subject.fagkode)) {
-                                            supervisorMap.set(subject.fagkode, []);
-                                        }
-                                        supervisorMap.get(subject.fagkode).push(item.hovedvakt);
+                                const matchedSubject = findBestSubjectMatch(item.fag, subjects);
+                                if (matchedSubject) {
+                                    if (!supervisorMap.has(matchedSubject.fagkode)) {
+                                        supervisorMap.set(matchedSubject.fagkode, []);
                                     }
-                                });
+                                    supervisorMap.get(matchedSubject.fagkode).push(item.hovedvakt);
+                                }
                             }
                         });
                     }
@@ -4423,6 +4415,64 @@
                 startMinutes: timeToMinutes(start),
                 endMinutes: timeToMinutes(end)
             };
+        }
+
+        function normalizeSubjectMatchText(value) {
+            return String(value || '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase()
+                .replace(/[^a-z0-9\s]/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+        }
+
+        function scoreSubjectMatch(vaktFagValue, subject) {
+            const rawNeedle = String(vaktFagValue || '').trim();
+            const rawFagkode = String(subject.fagkode || '').trim();
+            const rawFagnavn = String(subject.fagnavn || '').trim();
+
+            if (!rawNeedle) return 0;
+            if (rawNeedle.toUpperCase() === rawFagkode.toUpperCase()) return 100;
+
+            const needle = normalizeSubjectMatchText(rawNeedle);
+            const name = normalizeSubjectMatchText(rawFagnavn);
+
+            if (!needle || !name) return 0;
+            if (needle === name) return 95;
+
+            // Accept incomplete names such as "markedsforing" for "markedsforing og ledelse 2"
+            if (needle.length >= 4 && (name.includes(needle) || needle.includes(name))) {
+                return 85;
+            }
+
+            // Token overlap fallback for small spelling/format differences
+            const needleTokens = needle.split(' ').filter(Boolean);
+            const nameTokens = new Set(name.split(' ').filter(Boolean));
+            if (needleTokens.length === 0) return 0;
+
+            const overlap = needleTokens.filter(token => nameTokens.has(token)).length;
+            const ratio = overlap / needleTokens.length;
+
+            if (ratio >= 0.7) return 70;
+            if (ratio >= 0.5 && needle.length >= 6) return 60;
+
+            return 0;
+        }
+
+        function findBestSubjectMatch(vaktFagValue, subjects) {
+            let bestSubject = null;
+            let bestScore = 0;
+
+            subjects.forEach(subject => {
+                const score = scoreSubjectMatch(vaktFagValue, subject);
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestSubject = subject;
+                }
+            });
+
+            return bestScore >= 60 ? bestSubject : null;
         }
 
         function fetchExamInfo(fagkode) {
