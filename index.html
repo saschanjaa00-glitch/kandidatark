@@ -310,6 +310,12 @@
     <!-- Compact exam database fallback -->
     <script src="data/examDatabaseCompact.js"></script>
 
+    <!-- SEB subject codes -->
+    <script src="data/sebSubjects.js"></script>
+
+    <!-- Subject codes that should default to Hodetelefoner in Annet -->
+    <script src="data/headphoneSubjects.js"></script>
+
     <!-- PptxGenJS for PowerPoint generation -->
     <script src="https://cdn.jsdelivr.net/npm/pptxgenjs@3.12.0/dist/pptxgen.bundle.js"></script>
 
@@ -359,6 +365,8 @@
         const missingRoomsWarning = document.getElementById('missingRoomsWarning');
         const missingRoomsList = document.getElementById('missingRoomsList');
         const selectedPptQrFagkodes = new Set();
+        const sebSubjectCodeSet = new Set((window.sebSubjectCodes || []).map(code => String(code).trim().toUpperCase()));
+        const headphoneSubjectCodeSet = new Set((window.headphoneSubjectCodes || []).map(code => String(code).trim().toUpperCase()));
         const pptSupervisorFile = document.getElementById('pptSupervisorFile');
         const pptSupervisorUploadArea = document.getElementById('pptSupervisorUploadArea');
         const pptSupervisorFileInfo = document.getElementById('pptSupervisorFileInfo');
@@ -1086,11 +1094,15 @@
 
             examsForDate.forEach(exam => {
                 // Initialize subject options with defaults
+                const normalizedFagkode = String(exam.fagkode || '').trim().toUpperCase();
+                const isSebSubject = sebSubjectCodeSet.has(normalizedFagkode);
+                const hasDefaultHeadphones = headphoneSubjectCodeSet.has(normalizedFagkode);
                 const options = {
                     qrKode: exam.isTwoPart,  // On for todelt only
                     word: false,          // Off by default
                     nettleser: false,     // Off by default
-                    seb: false,           // Off by default
+                    seb: isSebSubject,    // On for configured SEB subjects
+                    hodetelefoner: hasDefaultHeadphones, // Hidden UI option, shown in Annet
                     innforingskark: exam.isTwoPart,  // On for todelt
                     ruteark: exam.isTwoPart,         // On for todelt
                     linjeark: true        // Always on
@@ -1122,7 +1134,6 @@
                     { key: 'qrKode', label: 'QR-kode' },
                     { key: 'word', label: 'Word' },
                     { key: 'nettleser', label: 'Nettleser' },
-                    { key: 'seb', label: 'SEB' },
                     { key: 'innforingskark', label: 'Innføringsark' },
                     { key: 'ruteark', label: 'Ruteark' },
                     { key: 'linjeark', label: 'Linjeark' }
@@ -3090,7 +3101,29 @@
                         .replace(/<[^>]*>/g, ' ')
                         .replace(/\s+/g, ' ')
                         .trim();
-                    const groupKey = normalizedHelpText.toLowerCase();
+
+                    const normalizedFagkode = String(subject.fagkode || '').trim().toUpperCase();
+                    const examInfo = fetchExamInfo(subject.fagkode);
+                    const isTwoPart = !!(examInfo && examInfo.del1 && examInfo.del2);
+                    const defaultOptions = {
+                        qrKode: isTwoPart,
+                        word: false,
+                        nettleser: false,
+                        seb: sebSubjectCodeSet.has(normalizedFagkode),
+                        hodetelefoner: headphoneSubjectCodeSet.has(normalizedFagkode),
+                        innforingskark: isTwoPart,
+                        ruteark: isTwoPart,
+                        linjeark: true
+                    };
+                    const selectedOptions = pptSubjectOptions.get(subject.fagkode) || {};
+                    const effectiveOptions = { ...defaultOptions, ...selectedOptions };
+
+                    // Group by both help text and Annet option profile so grouped slides stay consistent
+                    const annetKeys = ['word', 'nettleser', 'seb', 'hodetelefoner', 'innforingskark', 'ruteark', 'linjeark'];
+                    const annetSignature = annetKeys
+                        .map(key => `${key}:${effectiveOptions[key] ? '1' : '0'}`)
+                        .join('|');
+                    const groupKey = `${normalizedHelpText.toLowerCase()}||${annetSignature}`;
 
                     if (!groupedSubjectsByHelp.has(groupKey)) {
                         groupedSubjectsByHelp.set(groupKey, {
@@ -3432,11 +3465,13 @@
                 const bulletTextArray = [];
                 fixedBulletLines.slice(0, 5).forEach(line => {
                     bulletTextArray.push({
-                        text: '  • ' + line + '\n',
+                        text: line,
                         options: {
                             fontFace: marpInspiredTheme.fonts.body,
                             fontSize: 18,
-                            color: marpInspiredTheme.colors.text
+                            color: marpInspiredTheme.colors.text,
+                            bullet: { indent: 18 },
+                            breakLine: true
                         }
                     });
                 });
@@ -3681,6 +3716,8 @@
                     const rightColWidth = contentWidth - leftColWidth - 0.3;
                     const leftColX = contentLeft;
                     const rightColX = contentLeft + leftColWidth + 0.3;
+                    const columnTopY = 1.25;
+                    const columnHeight = 5.6;
 
                     // Build combined text for left column (subjects and supervisors)
                     const leftColumnText = [];
@@ -3818,7 +3855,7 @@
                                     options: {
                                         fontFace: marpInspiredTheme.fonts.body,
                                         bold: true,
-                                        fontSize: 16,
+                                        fontSize: 17,
                                         color: marpInspiredTheme.colors.heading
                                     }
                                 });
@@ -3829,8 +3866,8 @@
                                         text: supervisor + '\n',
                                         options: {
                                             fontFace: marpInspiredTheme.fonts.body,
-                                            fontSize: 18,
-                                            color: marpInspiredTheme.colors.text
+                                            fontSize: 14,
+                                            color: '555555'
                                         }
                                     });
                                 });
@@ -3848,9 +3885,9 @@
                     if (leftColumnText.length > 0) {
                         subjectSlide.addText(leftColumnText, {
                             x: leftColX + 0.15,
-                            y: 1.7,
+                            y: columnTopY,
                             w: leftColWidth - 0.3,
-                            h: 5.5,
+                            h: columnHeight,
                             fontFace: marpInspiredTheme.fonts.body,
                             fontSize: 20,
                             color: marpInspiredTheme.colors.text,
@@ -3859,8 +3896,8 @@
                         });
                     }
 
-                    // Right column: Todelt info and selected options
-                    let infoY = 1.7;
+                    // Right column: Todelt info, hjelpemidler and selected options in one text box
+                    let infoY = columnTopY;
 
                     // Check if any subject is todelt
                     const hasTodelt = group.subjects.some(subj => {
@@ -3868,41 +3905,7 @@
                         return info && info.del1 && info.del2;
                     });
 
-                    if (hasTodelt) {
-                        subjectSlide.addText('Todelt eksamen', {
-                            x: rightColX + 0.1,
-                            y: infoY,
-                            w: rightColWidth - 0.2,
-                            h: 0.3,
-                            fontFace: marpInspiredTheme.fonts.body,
-                            bold: true,
-                            fontSize: 20,
-                            color: marpInspiredTheme.colors.subtle
-                        });
-                        infoY += 0.35;
-
-                        subjectSlide.addText('Del 1: Papir', {
-                            x: rightColX + 0.15,
-                            y: infoY,
-                            w: rightColWidth - 0.3,
-                            h: 0.28,
-                            fontFace: marpInspiredTheme.fonts.body,
-                            fontSize: 18,
-                            color: marpInspiredTheme.colors.text
-                        });
-                        infoY += 0.3;
-
-                        subjectSlide.addText('Del 2: Digital/Papir', {
-                            x: rightColX + 0.15,
-                            y: infoY,
-                            w: rightColWidth - 0.3,
-                            h: 0.28,
-                            fontFace: marpInspiredTheme.fonts.body,
-                            fontSize: 18,
-                            color: marpInspiredTheme.colors.text
-                        });
-                        infoY += 0.35;
-                    }
+                    // Keep todelt labels in same text box as rest of right-column content
 
                     // Display selected options (eksamensalternativ)
                     const selectedOptionsRaw = [];
@@ -3911,6 +3914,7 @@
                         word: 'Word',
                         nettleser: 'Nettleser',
                         seb: 'SEB',
+                        hodetelefoner: 'Hodetelefoner',
                         innforingskark: 'Innføringsark',
                         ruteark: 'Ruteark',
                         linjeark: 'Linjeark'
@@ -3957,61 +3961,105 @@
                     const rawText = group.rawHelpText;
                     const helpLines = splitIntoSentences(rawText).slice(0, 3);
 
+                    // Adapt right-column font sizes when content gets long
+                    const rightTextVolume =
+                        helpLines.join(' ').length +
+                        selectedOptions.join(' ').length +
+                        (hasTodelt ? 45 : 0);
+                    const rightScale = rightTextVolume > 340 ? 0.8 : rightTextVolume > 250 ? 0.9 : 1;
+                    const rightFont = (size, min = 12) => Math.max(min, Math.round(size * rightScale));
+
                     // Build combined text for right column (hjelpemidler and options)
                     const rightColumnText = [];
+                    let hasRightSection = false;
+
+                    if (hasTodelt) {
+                        rightColumnText.push({
+                            text: 'Todelt eksamen\n',
+                            options: {
+                                fontFace: marpInspiredTheme.fonts.body,
+                                bold: true,
+                                fontSize: rightFont(20, 14),
+                                color: marpInspiredTheme.colors.subtle,
+                                breakLine: true
+                            }
+                        });
+                        rightColumnText.push({
+                            text: 'Del 1: Papir',
+                            options: {
+                                fontFace: marpInspiredTheme.fonts.body,
+                                fontSize: rightFont(18, 13),
+                                color: marpInspiredTheme.colors.text,
+                                bullet: { indent: 18 },
+                                breakLine: true
+                            }
+                        });
+                        rightColumnText.push({
+                            text: 'Del 2: Digital/Papir',
+                            options: {
+                                fontFace: marpInspiredTheme.fonts.body,
+                                fontSize: rightFont(18, 13),
+                                color: marpInspiredTheme.colors.text,
+                                bullet: { indent: 18 },
+                                breakLine: true
+                            }
+                        });
+                        hasRightSection = true;
+                    }
                     
                     if (helpLines.length > 0) {
                         // Add "Hjelpemidler" title
                         rightColumnText.push({
-                            text: 'Hjelpemidler\n',
+                            text: `${hasRightSection ? '\n' : ''}Hjelpemidler\n`,
                             options: {
                                 fontFace: marpInspiredTheme.fonts.body,
                                 bold: true,
-                                fontSize: 20,
-                                color: marpInspiredTheme.colors.subtle
+                                fontSize: rightFont(20, 14),
+                                color: marpInspiredTheme.colors.subtle,
+                                breakLine: true
                             }
                         });
 
                         // Add each help line as bullet point
                         helpLines.forEach(line => {
                             rightColumnText.push({
-                                text: '  • ' + line + '\n',
+                                text: line,
                                 options: {
                                     fontFace: marpInspiredTheme.fonts.body,
-                                    fontSize: 18,
-                                    color: marpInspiredTheme.colors.text
+                                    fontSize: rightFont(18, 13),
+                                    color: marpInspiredTheme.colors.text,
+                                    bullet: { indent: 18 },
+                                    breakLine: true
                                 }
                             });
                         });
-
-                        // Add spacing between sections
-                        rightColumnText.push({
-                            text: '\n',
-                            options: { fontSize: 12 }
-                        });
+                        hasRightSection = true;
                     }
 
                     // Display options if any are selected
                     if (selectedOptions.length > 0) {
                         // Add "Annet" title
                         rightColumnText.push({
-                            text: 'Annet\n',
+                            text: `${hasRightSection ? '\n' : ''}Annet\n`,
                             options: {
                                 fontFace: marpInspiredTheme.fonts.body,
                                 bold: true,
-                                fontSize: 20,
-                                color: marpInspiredTheme.colors.subtle
+                                fontSize: rightFont(20, 14),
+                                color: marpInspiredTheme.colors.subtle,
+                                breakLine: true
                             }
                         });
 
                         // Add each option as bullet point
                         selectedOptions.forEach(option => {
                             rightColumnText.push({
-                                text: '  • ' + option + '\n',
+                                text: option,
                                 options: {
                                     fontFace: marpInspiredTheme.fonts.body,
-                                    fontSize: 18,
-                                    color: marpInspiredTheme.colors.text
+                                    fontSize: rightFont(18, 13),
+                                    color: marpInspiredTheme.colors.text,
+                                    bullet: { indent: 18 },
+                                    breakLine: true
                                 }
                             });
                         });
@@ -4023,9 +4071,9 @@
                             x: rightColX,
                             y: infoY,
                             w: rightColWidth,
-                            h: 5.5,
+                            h: columnHeight,
                             fontFace: marpInspiredTheme.fonts.body,
-                            fontSize: 18,
+                            fontSize: rightFont(18, 13),
                             color: marpInspiredTheme.colors.text,
                             valign: 'top',
                             fit: 'shrink'
