@@ -193,12 +193,11 @@
             <h3 style="color: #222; margin-bottom: 12px; font-size: 15px; font-weight: 600;">Kjøreplan</h3>
             <div style="display: flex; flex-direction: column; gap: 12px;">
                 <label style="display: flex; align-items: center; cursor: pointer; color: #222; font-size: 14px;">
-                    <input type="checkbox" id="kjoreplanAllDates" style="margin-right: 8px; width: 16px; height: 16px;">
+                    <input type="checkbox" id="kjoreplanAllDates" checked style="margin-right: 8px; width: 16px; height: 16px;">
                     Bruk alle datoer (hvis ikke: kun valgte datoer)
                 </label>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
                     <button class="btn btn-kandidatark" id="generateKjoreplanWordBtn" disabled style="padding: 10px 16px; font-size: 13px;">Generer kjøreplan (.docx)</button>
-                    <button class="btn btn-kandidatark" id="generateKjoreplanExcelBtn" disabled style="padding: 10px 16px; font-size: 13px;">Generer kjøreplan (.xlsx)</button>
                 </div>
             </div>
         </div>
@@ -358,7 +357,6 @@
         const generateTilretteTablesExcelBtn = document.getElementById('generateTilretteTablesExcelBtn');
         const kjoreplanAllDatesCheckbox = document.getElementById('kjoreplanAllDates');
         const generateKjoreplanWordBtn = document.getElementById('generateKjoreplanWordBtn');
-        const generateKjoreplanExcelBtn = document.getElementById('generateKjoreplanExcelBtn');
         const generateTimeHelpBtn = document.getElementById('generateTimeHelpBtn');
         const generatePptBtn = document.getElementById('generatePptBtn');
         const pptDateSelect = document.getElementById('pptDateSelect');
@@ -490,8 +488,7 @@
             generateTilretteTablesBtn.disabled = true;
             generateTilretteTablesExcelBtn.disabled = true;
             generateKjoreplanWordBtn.disabled = true;
-            generateKjoreplanExcelBtn.disabled = true;
-            kjoreplanAllDatesCheckbox.checked = false;
+            kjoreplanAllDatesCheckbox.checked = true;
             generatePptBtn.disabled = true;
             pptDateSelect.disabled = true;
             pptDateSelect.innerHTML = '<option value="">Velg dato...</option>';
@@ -583,7 +580,6 @@
         generateTilretteTablesBtn.addEventListener('click', generateTilretteTables);
         generateTilretteTablesExcelBtn.addEventListener('click', generateTilretteTablesExcel);
         generateKjoreplanWordBtn.addEventListener('click', generateKjoreplanWord);
-        generateKjoreplanExcelBtn.addEventListener('click', generateKjoreplanExcel);
         generateTimeHelpBtn.addEventListener('click', generateTimeHelp);
         generatePptBtn.addEventListener('click', generatePowerPoint);
         generateQRBtn.addEventListener('click', generateQRCodeSheets);
@@ -689,7 +685,6 @@
                     generateTilretteTablesBtn.disabled = false;
                     generateTilretteTablesExcelBtn.disabled = false;
                     generateKjoreplanWordBtn.disabled = false;
-                    generateKjoreplanExcelBtn.disabled = false;
                     generateTimeHelpBtn.disabled = false;
                     generateQRBtn.disabled = false;
                     updatePowerPointDateOptions();
@@ -1772,69 +1767,6 @@
                 console.error(error);
             } finally {
                 generateKjoreplanWordBtn.disabled = false;
-                spinner.classList.remove('visible');
-            }
-        }
-
-        async function generateKjoreplanExcel() {
-            if (!currentData) {
-                showStatus('Vennligst last opp Excel-fil', 'error');
-                return;
-            }
-
-            if (!kjoreplanAllDatesCheckbox.checked && selectedDates.size === 0) {
-                showStatus('Vennligst velg minst en dato eller huk av for alle datoer', 'error');
-                return;
-            }
-
-            generateKjoreplanExcelBtn.disabled = true;
-            spinner.classList.add('visible');
-            showStatus('Genererer kjøreplan (Excel)...', 'processing');
-
-            try {
-                const rows = buildKjoreplanRows();
-                if (rows.length === 0) {
-                    showStatus('Ingen data funnet for valgt datoutvalg', 'error');
-                    return;
-                }
-
-                const aoa = [[
-                    'Dato',
-                    'Rom',
-                    'Kandidater',
-                    'Kun en del (fag/fagkode)',
-                    'Todelt (fag/fagkode)'
-                ]];
-
-                rows.forEach(row => {
-                    aoa.push([
-                        row.shortDate || row.date,
-                        row.roomLabel,
-                        row.candidateCount,
-                        row.singlePartSubjects.length ? row.singlePartSubjects.join('\n') : '-',
-                        row.twoPartSubjects.length ? row.twoPartSubjects.join('\n') : '-'
-                    ]);
-                });
-
-                const workbook = XLSX.utils.book_new();
-                const worksheet = XLSX.utils.aoa_to_sheet(aoa);
-                worksheet['!cols'] = [
-                    { wch: 10 },
-                    { wch: 34 },
-                    { wch: 12 },
-                    { wch: 48 },
-                    { wch: 48 }
-                ];
-
-                XLSX.utils.book_append_sheet(workbook, worksheet, 'Kjøreplan');
-                XLSX.writeFile(workbook, 'kjøreplan.xlsx');
-
-                showStatus(`Kjøreplan generert (${rows.length} datoer)`, 'success');
-            } catch (error) {
-                showStatus('Feil ved generering av kjøreplan Excel: ' + error.message, 'error');
-                console.error(error);
-            } finally {
-                generateKjoreplanExcelBtn.disabled = false;
                 spinner.classList.remove('visible');
             }
         }
