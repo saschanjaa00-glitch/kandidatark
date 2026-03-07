@@ -1658,12 +1658,18 @@
                 }
 
                 const { Document, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, BorderStyle } = docx;
-                const headers = ['Dato', 'Rom', 'Kandidater', 'Fag/Fagkode'];
+                const headers = [
+                    'Dato',
+                    'Rom',
+                    'Kandidater',
+                    'Kun en del (fag/fagkode)',
+                    'Todelt (fag/fagkode)'
+                ];
 
-                // Percentage widths tuned for landscape pages with one wide subject column.
-                const columnWidths = [11, 25, 12, 52];
+                // Percentage widths tuned for landscape pages with separate subject columns.
+                const columnWidths = [10, 22, 10, 29, 29];
 
-                const createCell = (children, isHeader = false, columnWidth = 20, textSize = 18) => new TableCell({
+                const createCell = (children, isHeader = false, columnWidth = 20, textSize = 22) => new TableCell({
                     children: Array.isArray(children) ? children : [new Paragraph({
                         children: [new TextRun({
                             text: String(children || '-'),
@@ -1677,44 +1683,34 @@
                     margins: { top: 60, bottom: 60, left: 70, right: 70 }
                 });
 
-                const subjectParagraphs = (row) => {
-                    const paragraphs = [];
-
-                    if (row.singlePartSubjects.length === 0 && row.twoPartSubjects.length === 0) {
+                const subjectParagraphs = (subjects) => {
+                    if (!subjects || subjects.length === 0) {
                         return [new Paragraph({
-                            children: [new TextRun({ text: '-', size: 16, font: 'Calibri' })],
+                            children: [new TextRun({ text: '-', size: 22, font: 'Calibri' })],
                             spacing: { after: 20 }
                         })];
                     }
 
-                    row.singlePartSubjects.forEach(subject => {
-                        paragraphs.push(new Paragraph({
-                            children: [new TextRun({ text: subject, size: 16, font: 'Calibri' })],
+                    return subjects.map(subject => {
+                        return new Paragraph({
+                            children: [new TextRun({ text: subject, size: 22, font: 'Calibri' })],
                             spacing: { after: 20 }
-                        }));
+                        });
                     });
-
-                    row.twoPartSubjects.forEach(subject => {
-                        paragraphs.push(new Paragraph({
-                            children: [new TextRun({ text: subject, size: 16, font: 'Calibri', bold: true })],
-                            spacing: { after: 20 }
-                        }));
-                    });
-
-                    return paragraphs;
                 };
 
                 const tableRows = [
                     new TableRow({
-                        children: headers.map((header, index) => createCell(header, true, columnWidths[index], 19))
+                        children: headers.map((header, index) => createCell(header, true, columnWidths[index], 22))
                     }),
                     ...rows.map(row => {
                         return new TableRow({
                             children: [
-                                createCell(row.shortDate || row.date, false, columnWidths[0], 18),
-                                createCell(row.roomLabel, false, columnWidths[1], 18),
-                                createCell(String(row.candidateCount), false, columnWidths[2], 18),
-                                createCell(subjectParagraphs(row), false, columnWidths[3], 16)
+                                createCell(row.shortDate || row.date, false, columnWidths[0], 22),
+                                createCell(row.roomLabel, false, columnWidths[1], 22),
+                                createCell(String(row.candidateCount), false, columnWidths[2], 22),
+                                createCell(subjectParagraphs(row.singlePartSubjects), false, columnWidths[3], 22),
+                                createCell(subjectParagraphs(row.twoPartSubjects), false, columnWidths[4], 22)
                             ]
                         });
                     })
@@ -1739,15 +1735,15 @@
                             page: {
                                 margin: {
                                     top: 540,
-                                    right: 540,
+                                    right: 810,
                                     bottom: 540,
-                                    left: 540
+                                    left: 810
                                 }
                             }
                         },
                         children: [
                             new Paragraph({
-                                children: [new TextRun({ text: 'Kjøreplan', bold: true, size: 26, font: 'Calibri' })],
+                                children: [new TextRun({ text: 'Kjøreplan', bold: true, size: 22, font: 'Calibri' })],
                                 spacing: { after: 120 }
                             }),
                             table
@@ -1806,20 +1802,17 @@
                     'Dato',
                     'Rom',
                     'Kandidater',
-                    'Fag/Fagkode'
+                    'Kun en del (fag/fagkode)',
+                    'Todelt (fag/fagkode)'
                 ]];
 
                 rows.forEach(row => {
-                    const subjectLines = [
-                        ...row.singlePartSubjects,
-                        ...row.twoPartSubjects.map(subject => `TODELT: ${subject}`)
-                    ];
-
                     aoa.push([
                         row.shortDate || row.date,
                         row.roomLabel,
                         row.candidateCount,
-                        subjectLines.length ? subjectLines.join('\n') : '-'
+                        row.singlePartSubjects.length ? row.singlePartSubjects.join('\n') : '-',
+                        row.twoPartSubjects.length ? row.twoPartSubjects.join('\n') : '-'
                     ]);
                 });
 
@@ -1829,7 +1822,8 @@
                     { wch: 10 },
                     { wch: 34 },
                     { wch: 12 },
-                    { wch: 95 }
+                    { wch: 48 },
+                    { wch: 48 }
                 ];
 
                 XLSX.utils.book_append_sheet(workbook, worksheet, 'Kjøreplan');
