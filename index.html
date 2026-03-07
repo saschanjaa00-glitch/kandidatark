@@ -1505,6 +1505,41 @@
             });
         }
 
+        function formatDateWithoutYear(dateStr) {
+            const parts = String(dateStr || '').split('.');
+            if (parts.length !== 3) {
+                return String(dateStr || '');
+            }
+            return `${parts[0].padStart(2, '0')}.${parts[1].padStart(2, '0')}`;
+        }
+
+        function sortRoomsAsc(rooms) {
+            const getNumericPart = (room) => {
+                const match = String(room).trim().match(/\d+/);
+                return match ? Number(match[0]) : Number.NaN;
+            };
+
+            return [...rooms].sort((a, b) => {
+                const aTrimmed = String(a).trim();
+                const bTrimmed = String(b).trim();
+                const aNum = getNumericPart(aTrimmed);
+                const bNum = getNumericPart(bTrimmed);
+
+                const aHasNum = !Number.isNaN(aNum);
+                const bHasNum = !Number.isNaN(bNum);
+
+                if (aHasNum && bHasNum && aNum !== bNum) {
+                    return aNum - bNum;
+                }
+
+                if (aHasNum !== bHasNum) {
+                    return aHasNum ? -1 : 1;
+                }
+
+                return aTrimmed.localeCompare(bTrimmed, 'nb', { numeric: true });
+            });
+        }
+
         function getKjoreplanDates() {
             if (!currentData) {
                 return [];
@@ -1568,9 +1603,13 @@
                     return Array.from(subjectMap.values()).sort((a, b) => a.localeCompare(b, 'nb'));
                 };
 
+                const sortedRooms = sortRoomsAsc(Array.from(roomSet));
+
                 return {
                     date,
+                    shortDate: formatDateWithoutYear(date),
                     roomCount: roomSet.size,
+                    roomLabel: roomSet.size > 0 ? `${roomSet.size}: ${sortedRooms.join(', ')}` : '0',
                     candidateCount: candidateSet.size,
                     singlePartSubjects: sortSubjectLabels(singlePartSubjects),
                     twoPartSubjects: sortSubjectLabels(twoPartSubjects)
@@ -1619,43 +1658,63 @@
                 }
 
                 const { Document, Paragraph, Table, TableRow, TableCell, TextRun, WidthType, BorderStyle } = docx;
-                const headers = [
-                    'Dato',
-                    'Antall rom',
-                    'Antall kandidater',
-                    'Kun en del (fag/fagkode)',
-                    'Todelt (fag/fagkode)'
-                ];
+                const headers = ['Dato', 'Rom', 'Kandidater', 'Fag/Fagkode'];
 
-                // Percentage widths tuned for landscape pages.
-                const columnWidths = [10, 10, 12, 34, 34];
+                // Percentage widths tuned for landscape pages with one wide subject column.
+                const columnWidths = [11, 25, 12, 52];
 
-                const createCell = (text, isHeader = false, columnWidth = 20, textSize = 22) => new TableCell({
-                    children: [new Paragraph({
+                const createCell = (children, isHeader = false, columnWidth = 20, textSize = 18) => new TableCell({
+                    children: Array.isArray(children) ? children : [new Paragraph({
                         children: [new TextRun({
-                            text: text || '-',
+                            text: String(children || '-'),
                             bold: isHeader,
                             size: textSize,
                             font: 'Calibri'
-                        })]
+                        })],
+                        spacing: { after: 30 }
                     })],
                     width: { size: columnWidth, type: WidthType.PERCENTAGE },
-                    margins: { top: 100, bottom: 100, left: 100, right: 100 }
+                    margins: { top: 60, bottom: 60, left: 70, right: 70 }
                 });
 
-                const tableRows = [
-                    new TableRow({ children: headers.map((header, index) => createCell(header, true, columnWidths[index])) }),
-                    ...rows.map(row => {
-                        const singlePartText = row.singlePartSubjects.length ? row.singlePartSubjects.join(' | ') : '-';
-                        const twoPartText = row.twoPartSubjects.length ? row.twoPartSubjects.join(' | ') : '-';
+                const subjectParagraphs = (row) => {
+                    const paragraphs = [];
 
+                    if (row.singlePartSubjects.length === 0 && row.twoPartSubjects.length === 0) {
+                        return [new Paragraph({
+                            children: [new TextRun({ text: '-', size: 16, font: 'Calibri' })],
+                            spacing: { after: 20 }
+                        })];
+                    }
+
+                    row.singlePartSubjects.forEach(subject => {
+                        paragraphs.push(new Paragraph({
+                            children: [new TextRun({ text: subject, size: 16, font: 'Calibri' })],
+                            spacing: { after: 20 }
+                        }));
+                    });
+
+                    row.twoPartSubjects.forEach(subject => {
+                        paragraphs.push(new Paragraph({
+                            children: [new TextRun({ text: subject, size: 16, font: 'Calibri', bold: true })],
+                            spacing: { after: 20 }
+                        }));
+                    });
+
+                    return paragraphs;
+                };
+
+                const tableRows = [
+                    new TableRow({
+                        children: headers.map((header, index) => createCell(header, true, columnWidths[index], 19))
+                    }),
+                    ...rows.map(row => {
                         return new TableRow({
                             children: [
-                                createCell(row.date, false, columnWidths[0], 22),
-                                createCell(String(row.roomCount), false, columnWidths[1], 22),
-                                createCell(String(row.candidateCount), false, columnWidths[2], 22),
-                                createCell(singlePartText, false, columnWidths[3], 20),
-                                createCell(twoPartText, false, columnWidths[4], 20)
+                                createCell(row.shortDate || row.date, false, columnWidths[0], 18),
+                                createCell(row.roomLabel, false, columnWidths[1], 18),
+                                createCell(String(row.candidateCount), false, columnWidths[2], 18),
+                                createCell(subjectParagraphs(row), false, columnWidths[3], 16)
                             ]
                         });
                     })
@@ -1676,10 +1735,20 @@
 
                 const doc = new Document({
                     sections: [{
+                        properties: {
+                            page: {
+                                margin: {
+                                    top: 540,
+                                    right: 540,
+                                    bottom: 540,
+                                    left: 540
+                                }
+                            }
+                        },
                         children: [
                             new Paragraph({
-                                children: [new TextRun({ text: 'Kjøreplan', bold: true, size: 32, font: 'Calibri' })],
-                                spacing: { after: 240 }
+                                children: [new TextRun({ text: 'Kjøreplan', bold: true, size: 26, font: 'Calibri' })],
+                                spacing: { after: 120 }
                             }),
                             table
                         ]
@@ -1735,30 +1804,32 @@
 
                 const aoa = [[
                     'Dato',
-                    'Antall rom',
-                    'Antall kandidater',
-                    'Kun en del (fag/fagkode)',
-                    'Todelt (fag/fagkode)'
+                    'Rom',
+                    'Kandidater',
+                    'Fag/Fagkode'
                 ]];
 
                 rows.forEach(row => {
+                    const subjectLines = [
+                        ...row.singlePartSubjects,
+                        ...row.twoPartSubjects.map(subject => `TODELT: ${subject}`)
+                    ];
+
                     aoa.push([
-                        row.date,
-                        row.roomCount,
+                        row.shortDate || row.date,
+                        row.roomLabel,
                         row.candidateCount,
-                        row.singlePartSubjects.length ? row.singlePartSubjects.join(' | ') : '-',
-                        row.twoPartSubjects.length ? row.twoPartSubjects.join(' | ') : '-'
+                        subjectLines.length ? subjectLines.join('\n') : '-'
                     ]);
                 });
 
                 const workbook = XLSX.utils.book_new();
                 const worksheet = XLSX.utils.aoa_to_sheet(aoa);
                 worksheet['!cols'] = [
-                    { wch: 14 },
+                    { wch: 10 },
+                    { wch: 34 },
                     { wch: 12 },
-                    { wch: 18 },
-                    { wch: 60 },
-                    { wch: 60 }
+                    { wch: 95 }
                 ];
 
                 XLSX.utils.book_append_sheet(workbook, worksheet, 'Kjøreplan');
