@@ -146,6 +146,26 @@
             </div>
         </div>
 
+        <div id="trekkoversiktContainer" style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
+            <h3 style="color: #222; margin-bottom: 15px; font-size: 15px; font-weight: 600;">Trekkoversikt</h3>
+            <div style="display: flex; flex-direction: column; gap: 15px;">
+                <div>
+                    <h4 style="color: #222; margin-bottom: 10px; font-size: 13px; font-weight: 600;">Trekkliste</h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <button class="btn btn-kandidatark" id="trekkoversiktNavnBtn" disabled style="padding: 10px 16px; font-size: 13px;">Sortert på navn (.xlsx)</button>
+                        <button class="btn btn-kandidatark" id="trekkoversiktFaggruppeBtn" disabled style="padding: 10px 16px; font-size: 13px;">Sortert på faggrupper (.xlsx)</button>
+                    </div>
+                </div>
+                <div>
+                    <h4 style="color: #222; margin-bottom: 10px; font-size: 13px; font-weight: 600;">Muntlig / Muntlig-praktisk <span id="muntligCount" style="color: #999; font-size: 12px; font-weight: 400;"></span></h4>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <button class="btn btn-kandidatark" id="trekkoversiktMuntligNavnBtn" disabled style="padding: 10px 16px; font-size: 13px;">Sortert på navn (.xlsx)</button>
+                        <button class="btn btn-kandidatark" id="trekkoversiktMuntligSensorBtn" disabled style="padding: 10px 16px; font-size: 13px;">Sortert på sensor (.xlsx)</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="printRoomContainer" style="background: #f9f9f9; padding: 15px; border-radius: 6px; border: 1px solid #e0e0e0; margin-bottom: 20px;">
             <h3 style="color: #222; margin-bottom: 15px; font-size: 15px; font-weight: 600;">Kandidatlister / Tilretteleggingslister</h3>
             
@@ -307,6 +327,9 @@
 
     <!-- SheetJS library for reading Excel -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+
+    <!-- ExcelJS for styled Excel export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
     
     <!-- docx library for creating Word documents -->
     <script src="https://unpkg.com/docx@7.8.2/build/index.js"></script>
@@ -334,6 +357,7 @@
 
     <script>
         let currentData = null;
+        let muntligData = null;
         let selectedDates = new Set();
         let sortPreference = 'fornavn'; // Default
         
@@ -351,6 +375,10 @@
         const sortFornavnRadio = document.getElementById('sortFornavn');
         const sortEtternavnRadio = document.getElementById('sortEtternavn');
         const copiesPerRoomInput = document.getElementById('copiesPerRoom');
+        const trekkoversiktNavnBtn = document.getElementById('trekkoversiktNavnBtn');
+        const trekkoversiktFaggruppeBtn = document.getElementById('trekkoversiktFaggruppeBtn');
+        const trekkoversiktMuntligNavnBtn = document.getElementById('trekkoversiktMuntligNavnBtn');
+        const trekkoversiktMuntligSensorBtn = document.getElementById('trekkoversiktMuntligSensorBtn');
         const generateTablesBtn = document.getElementById('generateTablesBtn');
         const generateTablesExcelBtn = document.getElementById('generateTablesExcelBtn');
         const generateTilretteTablesBtn = document.getElementById('generateTilretteTablesBtn');
@@ -487,6 +515,12 @@
             generateTablesExcelBtn.disabled = true;
             generateTilretteTablesBtn.disabled = true;
             generateTilretteTablesExcelBtn.disabled = true;
+            trekkoversiktNavnBtn.disabled = true;
+            trekkoversiktFaggruppeBtn.disabled = true;
+            trekkoversiktMuntligNavnBtn.disabled = true;
+            trekkoversiktMuntligSensorBtn.disabled = true;
+            muntligData = null;
+            document.getElementById('muntligCount').textContent = '';
             generateKjoreplanWordBtn.disabled = true;
             kjoreplanAllDatesCheckbox.checked = true;
             generatePptBtn.disabled = true;
@@ -579,6 +613,10 @@
         generateTablesExcelBtn.addEventListener('click', generateRoomTablesExcel);
         generateTilretteTablesBtn.addEventListener('click', generateTilretteTables);
         generateTilretteTablesExcelBtn.addEventListener('click', generateTilretteTablesExcel);
+        trekkoversiktNavnBtn.addEventListener('click', () => generateTrekkoversikt('navn'));
+        trekkoversiktFaggruppeBtn.addEventListener('click', () => generateTrekkoversikt('faggruppe'));
+        trekkoversiktMuntligNavnBtn.addEventListener('click', () => generateTrekkoversiktMuntlig('navn'));
+        trekkoversiktMuntligSensorBtn.addEventListener('click', () => generateTrekkoversiktMuntlig('sensor'));
         generateKjoreplanWordBtn.addEventListener('click', generateKjoreplanWord);
         generateTimeHelpBtn.addEventListener('click', generateTimeHelp);
         generatePptBtn.addEventListener('click', generatePowerPoint);
@@ -654,6 +692,26 @@
                             showUploadError('Ingen studenter med "Skriftlig/Skriftleg/Written" eksamen funnet');
                             return;
                         }
+
+                        // Extract muntlig data from the same file
+                        muntligData = jsonData.filter(student => {
+                            const form = String(student['Form']).trim().toLowerCase();
+                            return form.startsWith('muntlig') || form.startsWith('oral') || form === 'munnleg' || form.startsWith('munnleg');
+                        });
+                        const muntligCount = document.getElementById('muntligCount');
+                        if (muntligCount) {
+                            if (muntligData.length > 0) {
+                                muntligCount.textContent = `(${muntligData.length} registreringer funnet)`;
+                            } else {
+                                // Show what Form values actually exist to help diagnose
+                                const formValues = [...new Set(jsonData.map(s => String(s['Form'] ?? '').trim()))].filter(Boolean).join(', ');
+                                muntligCount.textContent = `(ingen funnet – Form-verdier i fil: ${formValues || 'ingen'})`;
+                            }
+                        }
+                    } else {
+                        muntligData = null;
+                        const muntligCount = document.getElementById('muntligCount');
+                        if (muntligCount) muntligCount.textContent = '(ingen Form-kolonne i fil)';
                     }
 
                     // Clear error when file loads successfully
@@ -684,6 +742,10 @@
                     generateTablesExcelBtn.disabled = false;
                     generateTilretteTablesBtn.disabled = false;
                     generateTilretteTablesExcelBtn.disabled = false;
+                    trekkoversiktNavnBtn.disabled = false;
+                    trekkoversiktFaggruppeBtn.disabled = false;
+                    trekkoversiktMuntligNavnBtn.disabled = false;
+                    trekkoversiktMuntligSensorBtn.disabled = false;
                     generateKjoreplanWordBtn.disabled = false;
                     generateTimeHelpBtn.disabled = false;
                     generateQRBtn.disabled = false;
@@ -1622,6 +1684,167 @@
             return generateRoomTablesExcelWithFilter(false);
         }
 
+        // Shared helper: build a styled Excel workbook using ExcelJS
+        async function buildStyledTrekkoversiktWorkbook(sheetName, headers, rows, groupKeyIndex) {
+            const wb = new ExcelJS.Workbook();
+            wb.creator = 'Eksamensplanlegging';
+            const ws = wb.addWorksheet(sheetName);
+
+            // Header style
+            const headerFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF2C5282' } };
+            const headerFont = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11, name: 'Calibri' };
+            const headerAlignment = { vertical: 'middle', horizontal: 'center', wrapText: false };
+            const borderThin = { style: 'thin', color: { argb: 'FFB0B0B0' } };
+            const cellBorder = { top: borderThin, left: borderThin, bottom: borderThin, right: borderThin };
+
+            // Add and style header row
+            const headerRow = ws.addRow(headers);
+            headerRow.height = 20;
+            headerRow.eachCell(cell => {
+                cell.fill = headerFill;
+                cell.font = headerFont;
+                cell.alignment = headerAlignment;
+                cell.border = cellBorder;
+            });
+
+            // Alternate colors by group key change
+            const evenFill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF0F4FA' } };
+            const oddFill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+            const bodyFont = { size: 11, name: 'Calibri' };
+
+            let colorBand = 0;
+            let lastGroupKey = null;
+            rows.forEach((rowData) => {
+                const groupKey = groupKeyIndex !== undefined ? String(rowData[groupKeyIndex] ?? '') : null;
+                if (groupKey !== lastGroupKey) {
+                    colorBand++;
+                    lastGroupKey = groupKey;
+                }
+                const row = ws.addRow(rowData);
+                row.height = 18;
+                row.eachCell({ includeEmpty: true }, cell => {
+                    cell.fill = colorBand % 2 === 1 ? oddFill : evenFill;
+                    cell.font = bodyFont;
+                    cell.alignment = { vertical: 'middle', wrapText: false };
+                    cell.border = cellBorder;
+                });
+            });
+
+            // Auto column widths (min 10, max 50)
+            ws.columns.forEach((col, i) => {
+                const headerLen = headers[i] ? headers[i].length : 0;
+                const maxLen = rows.reduce((max, row) => Math.max(max, String(row[i] ?? '').length), headerLen);
+                col.width = Math.min(50, Math.max(10, maxLen + 2));
+            });
+
+            // Freeze header row
+            ws.views = [{ state: 'frozen', ySplit: 1 }];
+
+            // Auto-filter on header row
+            ws.autoFilter = { from: { row: 1, column: 1 }, to: { row: 1, column: headers.length } };
+
+            return wb;
+        }
+
+        async function downloadExcelJsWorkbook(wb, filename) {
+            const buffer = await wb.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, filename);
+        }
+
+        async function generateTrekkoversikt(sortMode) {
+            if (!currentData) return;
+
+            if (selectedDates.size === 0) {
+                showStatus('Vennligst velg minst én dato for eksport', 'error');
+                return;
+            }
+
+            trekkoversiktNavnBtn.disabled = true;
+            trekkoversiktFaggruppeBtn.disabled = true;
+            spinner.classList.add('visible');
+            showStatus('Genererer trekkoversikt...', 'processing');
+
+            try {
+                // Include both skriftlig (currentData, filtered by selected dates) and all muntlig
+                const skriftligFiltered = currentData.filter(student => {
+                    const date = formatDate(getEksamensdatoValue(student));
+                    return selectedDates.has(date);
+                });
+                const combinedData = [...skriftligFiltered, ...(muntligData || [])];
+
+                if (combinedData.length === 0) {
+                    showStatus('Ingen kandidater funnet for valgte datoer', 'error');
+                    return;
+                }
+
+                // Sort data
+                const sorted = [...combinedData].sort((a, b) => {
+                    if (sortMode === 'navn') {
+                        const nameComp = compareStudentsByName(a, b, 'fornavn');
+                        if (nameComp !== 0) return nameComp;
+                        const subjectA = `${getFagkodeValue(a)} ${getFagnavnValue(a)}`.toLowerCase();
+                        const subjectB = `${getFagkodeValue(b)} ${getFagnavnValue(b)}`.toLowerCase();
+                        if (subjectA !== subjectB) return subjectA.localeCompare(subjectB);
+                        const dateA = formatDate(getEksamensdatoValue(a));
+                        const dateB = formatDate(getEksamensdatoValue(b));
+                        return dateA.localeCompare(dateB);
+                    } else {
+                        const fagnavnA = String(getFagnavnValue(a)).trim().toLowerCase();
+                        const fagnavnB = String(getFagnavnValue(b)).trim().toLowerCase();
+                        if (fagnavnA !== fagnavnB) return fagnavnA.localeCompare(fagnavnB);
+                        const fgA = String(a['Faggrupper'] ?? a['Faggruppe'] ?? '').trim().toLowerCase();
+                        const fgB = String(b['Faggrupper'] ?? b['Faggruppe'] ?? '').trim().toLowerCase();
+                        if (fgA !== fgB) return fgA.localeCompare(fgB);
+                        const nameComp = compareStudentsByName(a, b, 'fornavn');
+                        if (nameComp !== 0) return nameComp;
+                        const dateA = formatDate(getEksamensdatoValue(a));
+                        const dateB = formatDate(getEksamensdatoValue(b));
+                        return dateA.localeCompare(dateB);
+                    }
+                });
+
+                let headers, rows;
+                if (sortMode === 'navn') {
+                    headers = ['Navn', 'Fagkode', 'Fagnavn', 'Dato', 'Faggruppe', 'Form'];
+                    rows = sorted.map(student => [
+                        getDisplayName(student),
+                        String(getFagkodeValue(student)).trim(),
+                        String(getFagnavnValue(student)).trim(),
+                        formatDate(getEksamensdatoValue(student)),
+                        String(student['Faggrupper'] ?? student['Faggruppe'] ?? '').trim(),
+                        String(student['Form'] ?? '').trim()
+                    ]);
+                } else {
+                    headers = ['Fagkode', 'Fagnavn', 'Faggruppe', 'Navn', 'Dato', 'Form'];
+                    rows = sorted.map(student => [
+                        String(getFagkodeValue(student)).trim(),
+                        String(getFagnavnValue(student)).trim(),
+                        String(student['Faggrupper'] ?? student['Faggruppe'] ?? '').trim(),
+                        getDisplayName(student),
+                        formatDate(getEksamensdatoValue(student)),
+                        String(student['Form'] ?? '').trim()
+                    ]);
+                }
+
+                const sheetName = sortMode === 'navn' ? 'Sortert på navn' : 'Sortert på faggrupper';
+                const filename = sortMode === 'navn' ? 'trekkoversikt_navn.xlsx' : 'trekkoversikt_faggrupper.xlsx';
+                // Group key: col 0 = Navn (sorted by navn), col 1 = Fagnavn (sorted by faggrupper)
+                const groupKeyIndex = sortMode === 'navn' ? 0 : 1;
+                const wb = await buildStyledTrekkoversiktWorkbook(sheetName, headers, rows, groupKeyIndex);
+                await downloadExcelJsWorkbook(wb, filename);
+
+                showStatus(`Trekkoversikt (${sheetName}) lastet ned`, 'success');
+            } catch (error) {
+                showStatus('Feil ved generering av trekkoversikt: ' + error.message, 'error');
+            } finally {
+                trekkoversiktNavnBtn.disabled = false;
+                trekkoversiktFaggruppeBtn.disabled = false;
+                spinner.classList.remove('visible');
+            }
+        }
+
+
         async function generateTilretteTables() {
             return generateRoomTablesWithFilter(true);
         }
@@ -1865,6 +2088,93 @@
             if (width) cellConfig.width = width;
 
             return new TableCell(cellConfig);
+        }
+
+        async function generateTrekkoversiktMuntlig(sortMode) {
+            if (!muntligData) {
+                showStatus('Ingen muntligdata lastet inn. Last inn en fil med Form-kolonne som inneholder Muntlig/Muntlig-praktisk.', 'error');
+                return;
+            }
+
+            if (muntligData.length === 0) {
+                showStatus('Ingen kandidater med Muntlig / Muntlig-praktisk eksamen funnet i filen', 'error');
+                return;
+            }
+
+            trekkoversiktMuntligNavnBtn.disabled = true;
+            trekkoversiktMuntligSensorBtn.disabled = true;
+            spinner.classList.add('visible');
+            showStatus('Genererer muntlig trekkoversikt...', 'processing');
+
+            try {
+                const sorted = [...muntligData].sort((a, b) => {
+                    if (sortMode === 'navn') {
+                        const nameComp = compareStudentsByName(a, b, 'fornavn');
+                        if (nameComp !== 0) return nameComp;
+                        const subjectA = `${getFagkodeValue(a)} ${getFagnavnValue(a)}`.toLowerCase();
+                        const subjectB = `${getFagkodeValue(b)} ${getFagnavnValue(b)}`.toLowerCase();
+                        if (subjectA !== subjectB) return subjectA.localeCompare(subjectB);
+                        const dateA = formatDate(getEksamensdatoValue(a));
+                        const dateB = formatDate(getEksamensdatoValue(b));
+                        return dateA.localeCompare(dateB);
+                    } else {
+                        const sensorA = String(a['Sensor 1'] ?? '').trim().toLowerCase();
+                        const sensorB = String(b['Sensor 1'] ?? '').trim().toLowerCase();
+                        if (sensorA !== sensorB) return sensorA.localeCompare(sensorB);
+                        const partiA = String(a['Eksamensparti'] ?? '').trim().toLowerCase();
+                        const partiB = String(b['Eksamensparti'] ?? '').trim().toLowerCase();
+                        if (partiA !== partiB) return partiA.localeCompare(partiB);
+                        const nameComp = compareStudentsByName(a, b, 'fornavn');
+                        if (nameComp !== 0) return nameComp;
+                        const dateA = formatDate(getEksamensdatoValue(a));
+                        const dateB = formatDate(getEksamensdatoValue(b));
+                        return dateA.localeCompare(dateB);
+                    }
+                });
+
+                let headers, rows;
+                if (sortMode === 'navn') {
+                    headers = ['Navn', 'Fagkode', 'Fagnavn', 'Dato', 'Faggruppe', 'Sensor 1', 'Form'];
+                    rows = sorted.map(student => [
+                        getDisplayName(student),
+                        String(getFagkodeValue(student)).trim(),
+                        String(getFagnavnValue(student)).trim(),
+                        formatDate(getEksamensdatoValue(student)),
+                        String(student['Faggrupper'] ?? student['Faggruppe'] ?? '').trim(),
+                        String(student['Sensor 1'] ?? '').trim(),
+                        String(student['Form'] ?? '').trim()
+                    ]);
+                } else {
+                    headers = ['Sensor 1', 'Eksamensparti', 'Navn', 'Fagkode', 'Fagnavn', 'Dato', 'Faggruppe', 'Form'];
+                    rows = sorted.map(student => [
+                        String(student['Sensor 1'] ?? '').trim(),
+                        String(student['Eksamensparti'] ?? '').trim(),
+                        getDisplayName(student),
+                        String(getFagkodeValue(student)).trim(),
+                        String(getFagnavnValue(student)).trim(),
+                        formatDate(getEksamensdatoValue(student)),
+                        String(student['Faggrupper'] ?? student['Faggruppe'] ?? '').trim(),
+                        String(student['Form'] ?? '').trim()
+                    ]);
+                }
+
+                const sheetName = sortMode === 'navn' ? 'Muntlig - navn' : 'Muntlig - sensor';
+                const filename = sortMode === 'navn'
+                    ? 'trekkoversikt_muntlig_navn.xlsx'
+                    : 'trekkoversikt_muntlig_sensor.xlsx';
+                // Group key: col 0 = Navn (sorted by navn), col 0 = Sensor 1 (sorted by sensor)
+                const groupKeyIndex = 0;
+                const wb = await buildStyledTrekkoversiktWorkbook(sheetName, headers, rows, groupKeyIndex);
+                await downloadExcelJsWorkbook(wb, filename);
+
+                showStatus(`Muntlig trekkoversikt (${sheetName}) lastet ned`, 'success');
+            } catch (error) {
+                showStatus('Feil ved generering av muntlig trekkoversikt: ' + error.message, 'error');
+            } finally {
+                trekkoversiktMuntligNavnBtn.disabled = false;
+                trekkoversiktMuntligSensorBtn.disabled = false;
+                spinner.classList.remove('visible');
+            }
         }
 
         async function generateRoomTablesWithFilter(onlyTilrettelegging) {
