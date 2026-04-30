@@ -2233,48 +2233,47 @@
                     return;
                 }
 
-                // Group by room
+                // Group by date and room
                 const roomGroups = {};
                 filteredData.forEach(student => {
+                    const date = formatDate(getEksamensdatoValue(student));
                     const room = String(getRoomValue(student)).trim();
-                    if (!roomGroups[room]) {
-                        roomGroups[room] = [];
+                    const key = `${date}||${room}`;
+                    if (!roomGroups[key]) {
+                        roomGroups[key] = [];
                     }
-                    roomGroups[room].push(student);
+                    roomGroups[key].push(student);
                 });
 
-                // Sort students within each room by date first, then name
-                Object.keys(roomGroups).forEach(room => {
-                    roomGroups[room].sort((a, b) => {
-                        // First sort by date
-                        const dateA = formatDate(getEksamensdatoValue(a));
-                        const dateB = formatDate(getEksamensdatoValue(b));
-                        if (dateA !== dateB) return dateA.localeCompare(dateB);
-                        
-                        // Then sort by name
-                        return compareStudentsByName(a, b);
-                    });
+                // Sort students within each group by name
+                Object.keys(roomGroups).forEach(key => {
+                    roomGroups[key].sort((a, b) => compareStudentsByName(a, b));
                 });
 
-                // Sort rooms numerically
+                // Sort groups by date first, then room numerically
                 const sortedRooms = Object.keys(roomGroups).sort((a, b) => {
-                    return parseInt(a) - parseInt(b) || a.localeCompare(b);
+                    const [dateA, roomA] = a.split('||');
+                    const [dateB, roomB] = b.split('||');
+                    if (dateA !== dateB) return dateA.localeCompare(dateB);
+                    return parseInt(roomA) - parseInt(roomB) || roomA.localeCompare(roomB);
                 });
 
                 const defaultCopiesPerRoom = Math.max(1, parseInt(copiesPerRoomInput.value, 10) || 1);
                 const roomsToRender = [];
-                sortedRooms.forEach(room => {
+                sortedRooms.forEach(key => {
+                    const room = key.split('||')[1];
                     const copies = roomCopies[room] !== undefined ? roomCopies[room] : defaultCopiesPerRoom;
                     for (let i = 0; i < copies; i++) {
-                        roomsToRender.push(room);
+                        roomsToRender.push(key);
                     }
                 });
 
                 const children = [];
 
                 // Generate table for each room
-                roomsToRender.forEach((room, roomIndex) => {
-                    const students = roomGroups[room];
+                roomsToRender.forEach((key, roomIndex) => {
+                    const room = key.split('||')[1];
+                    const students = roomGroups[key];
                     const roomDate = formatDate(getEksamensdatoValue(students[0]));
 
                     // Check if any student in this room has skjermet plass
@@ -2777,49 +2776,48 @@
                     return;
                 }
 
-                // Group by room
+                // Group by date and room
                 const roomGroups = {};
                 filteredData.forEach(student => {
+                    const date = formatDate(getEksamensdatoValue(student));
                     const room = String(getRoomValue(student)).trim();
-                    if (!roomGroups[room]) {
-                        roomGroups[room] = [];
+                    const key = `${date}||${room}`;
+                    if (!roomGroups[key]) {
+                        roomGroups[key] = [];
                     }
-                    roomGroups[room].push(student);
+                    roomGroups[key].push(student);
                 });
 
-                // Sort students within each room by date first, then name
-                Object.keys(roomGroups).forEach(room => {
-                    roomGroups[room].sort((a, b) => {
-                        // First sort by date
-                        const dateA = formatDate(getEksamensdatoValue(a));
-                        const dateB = formatDate(getEksamensdatoValue(b));
-                        if (dateA !== dateB) return dateA.localeCompare(dateB);
-                        
-                        // Then sort by name
-                        return compareStudentsByName(a, b);
-                    });
+                // Sort students within each group by name
+                Object.keys(roomGroups).forEach(key => {
+                    roomGroups[key].sort((a, b) => compareStudentsByName(a, b));
                 });
 
-                // Sort rooms numerically
+                // Sort groups by date first, then room numerically
                 const sortedRooms = Object.keys(roomGroups).sort((a, b) => {
-                    return parseInt(a) - parseInt(b) || a.localeCompare(b);
+                    const [dateA, roomA] = a.split('||');
+                    const [dateB, roomB] = b.split('||');
+                    if (dateA !== dateB) return dateA.localeCompare(dateB);
+                    return parseInt(roomA) - parseInt(roomB) || roomA.localeCompare(roomB);
                 });
 
                 // Create list of rooms to render based on copy counts
                 const defaultCopiesPerRoom = Math.max(1, parseInt(copiesPerRoomInput.value, 10) || 1);
                 const roomsToRender = [];
-                sortedRooms.forEach(room => {
+                sortedRooms.forEach(key => {
+                    const room = key.split('||')[1];
                     const copies = roomCopies[room] !== undefined ? roomCopies[room] : defaultCopiesPerRoom;
                     for (let i = 0; i < copies; i++) {
-                        roomsToRender.push(room);
+                        roomsToRender.push(key);
                     }
                 });
 
                 // Create Excel workbook with separate sheets for each room
                 const workbook = XLSX.utils.book_new();
                 
-                roomsToRender.forEach((room, roomIndex) => {
-                    const students = roomGroups[room];
+                roomsToRender.forEach((key, roomIndex) => {
+                    const room = key.split('||')[1];
+                    const students = roomGroups[key];
                     const roomDate = formatDate(getEksamensdatoValue(students[0]));
                     
                     // Create header row
@@ -2889,12 +2887,13 @@
                     worksheet['!cols'] = colWidths.map(w => ({ wch: w }));
                     
                     // Add worksheet to workbook
-                    // Count how many times this room appears up to this point
-                    const roomCopyCount = roomsToRender.slice(0, roomIndex + 1).filter(r => r === room).length;
+                    // Count how many times this key appears up to this point
+                    const roomCopyCount = roomsToRender.slice(0, roomIndex + 1).filter(r => r === key).length;
                     const defaultCopies = Math.max(1, parseInt(copiesPerRoomInput.value, 10) || 1);
                     const totalCopiesForRoom = roomCopies[room] !== undefined ? roomCopies[room] : defaultCopies;
                     
-                    let sheetName = `Rom ${room}`;
+                    const roomAppearsOnMultipleDates = sortedRooms.filter(k => k.split('||')[1] === room).length > 1;
+                    let sheetName = roomAppearsOnMultipleDates ? `${roomDate} - Rom ${room}` : `Rom ${room}`;
                     if (totalCopiesForRoom > 1) {
                         sheetName += ` (${roomCopyCount})`;
                     }
